@@ -56,7 +56,13 @@ git clone https://github.com/VocanicZ/ledger-rtdd.git && cd ledger-rtdd
 Invoke `/rtdd`, paste the same prompt.
 
 **Collect, in each container, once its session has ended.** `bench/collect.py` is a single
-stdlib-only file — copy it in, or fetch it, and run it against the workspace:
+stdlib-only file. Fetch it (this repo is private, so via the API rather than a raw URL):
+
+```
+gh api repos/VocanicZ/rtdd-bench/contents/bench/collect.py -q .content | base64 -d > collect.py
+```
+
+or `docker cp` it in. Then run it against the workspace:
 
 ```
 python3 collect.py --workspace . --label tdd  > tdd.json     # container A
