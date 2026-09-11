@@ -1,0 +1,6 @@
+[submodule "ledger-tdd"]
+	path = ledger-tdd
+	url = https://github.com/VocanicZ/ledger-tdd.git
+[submodule "ledger-rtdd"]
+	path = ledger-rtdd
+	url = https://github.com/VocanicZ/ledger-rtdd.git
