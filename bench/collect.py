@@ -42,14 +42,16 @@ def text_of(block):
     return ""
 
 
-def load_entries(workspace, session=None, since=None, until=None):
+def load_entries(workspace, session=None, since=None, until=None,
+                 transcripts=None, cwd_prefix=None):
     """Transcript entries whose cwd is inside the workspace, in time order.
 
     A benchmark workspace is normally used by exactly one session, but --session
     (or --since/--until) pins it when a run was resumed or retried."""
-    ws = os.path.realpath(workspace)
+    ws = cwd_prefix or os.path.realpath(workspace)
+    prefixes = {ws, os.path.abspath(workspace), os.path.realpath(workspace)} if not cwd_prefix else {ws}
     slug = re.sub(r"[^a-zA-Z0-9]", "-", ws)
-    home = os.path.expanduser("~/.claude/projects")
+    home = os.path.expanduser(transcripts or "~/.claude/projects")
     files = glob.glob(f"{home}/{slug}/*.jsonl") or glob.glob(f"{home}/*/*.jsonl")
     out = []
     for f in files:
@@ -61,8 +63,12 @@ def load_entries(workspace, session=None, since=None, until=None):
                     continue
                 if not d.get("timestamp"):
                     continue
-                cwd = os.path.realpath(d["cwd"]) if d.get("cwd") else None
-                if not (cwd and (cwd == ws or cwd.startswith(ws + os.sep))):
+                cwd = d.get("cwd")
+                if not cwd:
+                    continue
+                cands = {cwd, os.path.realpath(cwd)} if os.path.exists(cwd) else {cwd}
+                if not any(c == pre or c.startswith(pre + os.sep)
+                           for c in cands for pre in prefixes):
                     continue
                 if session and d.get("sessionId") != session:
                     continue
@@ -75,10 +81,15 @@ def load_entries(workspace, session=None, since=None, until=None):
     return out
 
 
-def collect(workspace, label, session=None, since=None, until=None):
-    entries = load_entries(workspace, session, since, until)
+def collect(workspace, label, session=None, since=None, until=None,
+            transcripts=None, cwd_prefix=None):
+    entries = load_entries(workspace, session, since, until, transcripts, cwd_prefix)
     if not entries:
-        sys.exit(f"no transcript entries found with cwd under {workspace}")
+        sys.exit(
+            f"no transcript entries with cwd under {cwd_prefix or os.path.realpath(workspace)}\n"
+            f"  transcripts searched: {os.path.expanduser(transcripts or '~/.claude/projects')}\n"
+            f"  if the session ran elsewhere (another container), pass --cwd-prefix "
+            f"with the path it used there")
     sessions = sorted({d.get("sessionId") for d in entries if d.get("sessionId")})
     if len(sessions) > 1 and not session:
         print(f"warning: {len(sessions)} sessions in this workspace; "
@@ -173,6 +184,10 @@ def collect(workspace, label, session=None, since=None, until=None):
 
 def project_stats(ws):
     """Test count and repo size, measured from the artifact rather than claimed."""
+    if not os.path.isdir(ws):
+        return {"unavailable": f"{ws} not present; collect inside the container "
+                               f"where the session ran to get these"}
+
     def sh(*a):
         try:
             return subprocess.run(a, cwd=ws, capture_output=True, text=True, timeout=30).stdout.strip()
@@ -212,11 +227,15 @@ if __name__ == "__main__":
     p.add_argument("--session", help="sessionId to pin (see --list)")
     p.add_argument("--since", help="ISO timestamp lower bound")
     p.add_argument("--until", help="ISO timestamp upper bound")
+    p.add_argument("--transcripts", help="transcript root (default ~/.claude/projects)")
+    p.add_argument("--cwd-prefix", help="match this cwd instead of the workspace's real path, "
+                                        "for transcripts copied out of another machine")
     p.add_argument("--list", action="store_true", help="list sessions and exit")
     a = p.parse_args()
     if a.list:
         seen = {}
-        for d in load_entries(a.workspace):
+        for d in load_entries(a.workspace, transcripts=a.transcripts,
+                              cwd_prefix=a.cwd_prefix):
             sid = d.get("sessionId")
             if sid:
                 seen.setdefault(sid, [d["timestamp"], 0])
@@ -224,5 +243,6 @@ if __name__ == "__main__":
         for sid, (t, n) in sorted(seen.items(), key=lambda kv: kv[1][0]):
             print(f"{sid}  first={t}  entries={n}")
         sys.exit(0)
-    json.dump(collect(a.workspace, a.label, a.session, a.since, a.until), sys.stdout, indent=2)
+    json.dump(collect(a.workspace, a.label, a.session, a.since, a.until,
+                      a.transcripts, a.cwd_prefix), sys.stdout, indent=2)
     print()

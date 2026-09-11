@@ -37,16 +37,56 @@ failure marker, so the cycle count does not depend on the agent narrating anythi
 
 ## Running it
 
-1. Start a session in `ledger-tdd/`, invoke `/tdd`, paste the prompt from `PROMPT.md`.
-2. Start a session in `ledger-rtdd/`, invoke `/rtdd`, paste the same prompt.
-3. When both finish: `bench/run.sh`
+The two variants run in **separate containers** and never share a filesystem, so neither
+agent can see the harness or the other run. Clone each project repo on its own — not this
+repo with `--recurse-submodules`, which would put both in one tree.
 
-If a workspace saw more than one session (a resume or a retry), the collector warns and
-you pin the one you meant:
+**Container A**
 
 ```
-python3 bench/collect.py --workspace ledger-tdd --label x --list
-bench/run.sh <tdd-session-id> <rtdd-session-id>
+git clone https://github.com/VocanicZ/ledger-tdd.git && cd ledger-tdd
+```
+Invoke `/tdd`, paste the prompt from `PROMPT.md`.
+
+**Container B**
+
+```
+git clone https://github.com/VocanicZ/ledger-rtdd.git && cd ledger-rtdd
+```
+Invoke `/rtdd`, paste the same prompt.
+
+**Collect, in each container, once its session has ended.** `bench/collect.py` is a single
+stdlib-only file — copy it in, or fetch it, and run it against the workspace:
+
+```
+python3 collect.py --workspace . --label tdd  > tdd.json     # container A
+python3 collect.py --workspace . --label rtdd > rtdd.json    # container B
+```
+
+It must run *inside* the container: the transcripts live at `~/.claude/projects` there, and
+the test count and LOC are measured from the workspace on disk. Copy both JSON files into
+`results/` on the host and render:
+
+```
+bench/run.sh
+```
+
+If instead you copy the raw transcripts out of a container, collect on the host with the
+path the session actually used in there:
+
+```
+python3 bench/collect.py --workspace . --label tdd   --transcripts ./copied-projects --cwd-prefix /workspace/ledger-tdd > results/tdd.json
+```
+
+Project stats (test count, LOC, commits) are reported as unavailable in that mode, since
+the workspace is not present.
+
+If a workspace saw more than one session (a resume or a retry), the collector warns and you
+pin the one you meant:
+
+```
+python3 collect.py --workspace . --label x --list
+python3 collect.py --workspace . --label tdd --session <id> > tdd.json
 ```
 
 ## Reading the result honestly
@@ -57,5 +97,6 @@ bench/run.sh <tdd-session-id> <rtdd-session-id>
   idle between your turns.
 - **One trial is an anecdote.** Run the pair several times before believing a delta;
   these sessions are not deterministic.
-- **The two variants must not see each other.** Each session opens its own submodule and
-  nothing above it.
+- **The two variants must not see each other.** Run them in separate containers, cloning
+  each project repo directly. The submodule wiring here is only so this repo pins which
+  commit of each variant a given result set refers to.
