@@ -1,6 +1,0 @@
-[submodule "ledger-tdd"]
-	path = examples/ledger/java-maven/tdd
-	url = https://github.com/VocanicZ/ledger-tdd.git
-[submodule "ledger-rtdd"]
-	path = examples/ledger/java-maven/rtdd
-	url = https://github.com/VocanicZ/ledger-rtdd.git
