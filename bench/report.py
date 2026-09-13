@@ -5,7 +5,7 @@
 """
 import json, re, sys
 
-RUNNER = re.compile(r"\b(?:mvnw?|gradlew?|rtdd)\b")
+RUNNER = re.compile(r"\b(?:mvnw?|gradlew?|rtdd|pytest|go test|gotestsum)\b")
 
 ROWS = [
     ("Wall clock (s)",            lambda d: d["wall_clock_s"], "lower"),
@@ -67,14 +67,14 @@ def main(paths):
         if not r:
             continue
         adapters = ", ".join(r["adapters"]) or "none"
-        if r["fidelity"] != "execution":
+        if not r["fidelity"].startswith("execution"):
             print(f"\n> **`{d['label']}` ran rtdd at `{r['fidelity']}` fidelity** ({adapters} adapter, "
                   f"{r['map_entries']} map entries). A static adapter records no coverage and builds no "
                   f"map, so tests were chosen from declared correspondence, not from a recorded run — "
                   f"rtdd's weakest tier. Read the selection deltas as static selection, not as the "
                   f"coverage-derived selection rtdd is built around.")
         else:
-            print(f"\n> `{d['label']}` ran rtdd at `execution` fidelity "
+            print(f"\n> `{d['label']}` ran rtdd at `{r['fidelity']}` fidelity "
                   f"({adapters} adapter, {r['map_entries']} map entries).")
     print("\n## Test executions\n")
     for d in ds:

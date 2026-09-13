@@ -1,0 +1,203 @@
+{
+  "label": "rtdd",
+  "workspace": "/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/rtdd",
+  "sessions": [
+    "03514ffb-923c-4a36-9803-282586eb23ad"
+  ],
+  "started": "2026-09-13T12:48:33.312Z",
+  "ended": "2026-09-13T13:02:50.994Z",
+  "models": {
+    "claude-opus-5": 64
+  },
+  "wall_clock_s": 857.7,
+  "active_s": 764.7,
+  "test_seconds": 22.0,
+  "selector_seconds": 0.8,
+  "test_share_of_active": 0.029,
+  "test_runs": 25,
+  "selector_queries": 3,
+  "failed_runs": 8,
+  "red_green_cycles": 7,
+  "mean_run_s": 0.88,
+  "slowest_run_s": 1.35,
+  "assistant_turns": 64,
+  "tokens": {
+    "input_tokens": 128,
+    "output_tokens": 56676,
+    "cache_read_input_tokens": 5229148,
+    "cache_creation_input_tokens": 138171,
+    "thinking_tokens": 19998
+  },
+  "billable_tokens": 194975,
+  "tool_calls": {
+    "Bash": 36
+  },
+  "project": {
+    "tests_reported": 34,
+    "test_suites": 6,
+    "main_files": 6,
+    "test_files": 6,
+    "main_loc": 456,
+    "test_loc": 329,
+    "commits": 4
+  },
+  "rtdd": {
+    "adapters": [
+      "python"
+    ],
+    "fidelity": "execution-derived",
+    "map_entries": 53
+  },
+  "runs": [
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/rtdd\" && printf '.venv/\\n' >> .gitignore && touch conftest.py && cat > tests/test_parse.py <<'EOF'\nimport pytest\n\nfrom cron.parser import parse\n\n\ndef test_all_wildcards():\n    expr = parse(\"* * * * *\")\n    assert expr.minutes == frozenset(range(60))\n    assert expr.hours == frozenset(range(24))\n    assert expr.days_of_month == frozenset(range(1, 32))\n    assert expr.months == frozenset(range(1, 13))\n    assert expr.days_of_week == frozenset(range(7))\nEOF\nPATH=\"$PWD/.venv/bin:$PATH\" pytest -q 2>&1 | tail -8",
+      "seconds": 0.62,
+      "failed": false,
+      "at": "2026-09-13T12:52:33.212Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/rtdd\" && mkdir -p cron && touch cron/__init__.py && cat > cron/parser.py <<'EOF'\n\"\"\"Parse the five cron fields into the sets of values they match.\"\"\"\n\nfrom dataclasses import dataclass\n\n\nclass CronError(ValueError):\n    \"\"\"A cron expression that cannot be parsed. Names the offending field.\"\"\"\n\n\n@dataclass(frozen=True)\nclass CronExpr:\n    minutes: frozenset[int]\n    hours: frozenset[int]\n    days_of_month: frozenset[int]\n    months: frozenset[int]\n    days_of_week: frozenset[int]\n\n\ndef parse(expr: str) -> CronExpr:\n    fields = expr.split()\n    if len(fields) != 5:\n        raise CronError(f\"expected 5 fields, got {len(fields)}: {expr!r}\")\n    return CronExpr(\n        minutes=frozenset(range(60)),\n        hours=frozenset(range(24)),\n        days_of_month=frozenset(range(1, 32)),\n        months=frozenset(range(1, 13)),\n        days_of_week=frozenset(range(7)),\n    )\nEOF\nPATH=\"$PWD/.venv/bin:$PATH\" pytest -q 2>&1 | tail -3",
+      "seconds": 0.56,
+      "failed": false,
+      "at": "2026-09-13T12:52:41.036Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/rtdd\" && PATH=\"$PWD/.venv/bin:$PATH\" rtdd seed 2>&1 | tail -15 && cat .rtdd/map.jsonl",
+      "seconds": 0.5,
+      "failed": true,
+      "at": "2026-09-13T12:52:44.849Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/rtdd\" && PATH=\"$PWD/.venv/bin:$PATH\" rtdd seed -v 2>&1 | tail -30; echo \"=== doctor ===\"; PATH=\"$PWD/.venv/bin:$PATH\" rtdd doctor 2>&1 | tail -20",
+      "seconds": 0.16,
+      "failed": false,
+      "at": "2026-09-13T12:52:49.321Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/rtdd\" && file /home/nathanielsong/.local/bin/rtdd; PATH=\"$PWD/.venv/bin:$PATH\" rtdd seed --help 2>&1 | head -20; strings /home/nathanielsong/.local/bin/rtdd 2>/dev/null | grep -n \"coverage run\\|--cov\\|collect-only\\|pytest\" | head -20",
+      "seconds": 0.36,
+      "failed": false,
+      "at": "2026-09-13T12:54:59.819Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/rtdd\" && rm -f conftest.py && python3 - <<'EOF'\nimport pathlib\np = pathlib.Path(\"pyproject.toml\")\ns = p.read_text()\ns = s.replace('testpaths = [\"tests\"]', 'testpaths = [\"tests\"]\\npythonpath = [\".\"]')\np.write_text(s)\nEOF\nuv pip install --python .venv/bin/python pytest-cov pytest-reportlog 2>&1 | tail -3 && PATH=\"$PWD/.venv/bin:$PATH\" rtdd seed 2>&1 | tail -8 && cat .rtdd/map.jsonl",
+      "seconds": 1.21,
+      "failed": false,
+      "at": "2026-09-13T12:55:09.001Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/rtdd\" && PATH=\"$PWD/.venv/bin:$PATH\" rtdd run 2>&1 | tail -8",
+      "seconds": 1.03,
+      "failed": false,
+      "at": "2026-09-13T12:55:19.906Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/rtdd\" && PATH=\"$PWD/.venv/bin:$PATH\" rtdd run 2>&1 | grep -E \"FAILED|failed|passed|selected\" | head -10",
+      "seconds": 0.76,
+      "failed": true,
+      "at": "2026-09-13T12:55:23.437Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/rtdd\" && cat > cron/parser.py <<'EOF'\n\"\"\"Parse a cron expression into the sets of values each of its five fields matches.\"\"\"\n\nfrom dataclasses import dataclass\n\nMONTH_NAMES = {\n    name: i\n    for i, name in enumerate(\n        \"JAN FEB MAR APR MAY JUN JUL AUG SEP OCT NOV DEC\".split(), start=1\n    )\n}\nDAY_NAMES = {\n    name: i for i, name in enumerate(\"SUN MON TUE WED THU FRI SAT\".split())\n}\n\nMACROS = {\n    \"@hourly\": \"0 * * * *\",\n    \"@daily\": \"0 0 * * *\",\n    \"@weekly\": \"0 0 * * 0\",\n    \"@monthly\": \"0 0 1 * *\",\n    \"@yearly\": \"0 0 1 1 *\",\n}\n\n\nclass CronError(ValueError):\n    \"\"\"A cron expression that cannot be parsed. The message names the bad field.\"\"\"\n\n\n@dataclass(frozen=True)\nclass Field:\n    name: str\n    low: int\n    high: int\n    names: dict[str, int] | None = None\n    # A field left as \"*\" is unrestricted; day-of-month and day-of-week use that\n    # to decide whether their match is an OR or an AND.\n    restricted: bool = False\n\n\nFIELDS = (\n    Field(\"minute\", 0, 59),\n    Field(\"hour\", 0, 23),\n    Field(\"day-of-month\", 1, 31),\n    Field(\"month\", 1, 12, MONTH_NAMES),\n    Field(\"day-of-week\", 0, 7, DAY_NAMES),\n)\n\n\n@dataclass(frozen=True)\nclass CronExpr:\n    minutes: frozenset[int]\n    hours: frozenset[int]\n    days_of_month: frozenset[int]\n    months: frozenset[int]\n    days_of_week: frozenset[int]\n    dom_restricted: bool\n    dow_restricted: bool\n\n\ndef parse(expr: str) -> CronExpr:\n    \"\"\"Parse `expr` into a CronExpr, or raise CronError naming the bad field.\"\"\"\n    text = expr.strip()\n    if text.startswith(\"@\"):\n        expanded = MACROS.get(text.lower())\n        if expanded is None:\n            raise CronError(\n                f\"unknown macro {text!r}: expected one of \"\n                + \", \".join(sorted(MACROS))\n            )\n        text = expanded\n\n    fields = text.split()\n    if len(fields) != 5:\n        raise CronError(\n            f\"expected 5 fields (minute hour day-of-month month day-of-week), \"\n            f\"got {len(fields)}: {expr!r}\"\n        )\n\n    values = [_parse_field(spec, field) for spec, field in zip(fields, FIELDS)]\n    dow = frozenset(0 if v == 7 else v for v in values[4])\n    return CronExpr(\n        minutes=values[0],\n        hours=values[1],\n        days_of_month=values[2],\n        months=values[3],\n        days_of_week=dow,\n        dom_restricted=fields[2] != \"*\",\n        dow_restricted=fields[4] != \"*\",\n    )\n\n\ndef _parse_field(spec: str, field: Field) -> frozenset[int]:\n    values: set[int] = set()\n    if spec == \"\":\n        raise CronError(f\"{field.name}: empty field\")\n    for part in spec.split(\",\"):\n        values |= _parse_part(part, field, spec)\n    return frozenset(values)\n\n\ndef _parse_part(part: str, field: Field, spec: str) -> set[int]:\n    body, sep, step_text = part.partition(\"/\")\n    step = 1\n    if sep:\n        step = _to_int(step_text, field, spec)\n        if step < 1:\n            raise CronError(f\"{field.name}: step must be 1 or more in {spec!r}\")\n\n    if body == \"*\":\n        low, high = field.low, field.high\n    elif \"-\" in body[1:] or (body.startswith(\"-\") and False):\n        start_text, _, end_text = body.partition(\"-\")\n        low = _value(start_text, field, spec)\n        high = _value(end_text, field, spec)\n        if low > high:\n            raise CronError(\n                f\"{field.name}: range {body!r} runs backwards in {spec!r}\"\n            )\n    else:\n        low = high = _value(body, field, spec)\n        if not sep:\n            return {low}\n\n    return set(range(low, high + 1, step))\n\n\ndef _value(text: str, field: Field, spec: str) -> int:\n    if field.names is not None:\n        named = field.names.get(text.strip().upper())\n        if named is not None:\n            return named\n    value = _to_int(text, field, spec)\n    if not field.low <= value <= field.high:\n        raise CronError(\n            f\"{field.name}: {value} out of range \"\n            f\"{field.low}-{field.high} in {spec!r}\"\n        )\n    return value\n\n\ndef _to_int(text: str, field: Field, spec: str) -> int:\n    try:\n        return int(text)\n    except ValueError:\n        raise CronError(f\"{field.name}: {text!r} is not a number in {spec!r}\") from None\nEOF\nPATH=\"$PWD/.venv/bin:$PATH\" rtdd run 2>&1 | grep -E \"FAILED|failed|passed|selected|UNCOVERED\" | head",
+      "seconds": 0.88,
+      "failed": false,
+      "at": "2026-09-13T12:55:42.076Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/rtdd\" && python3 - <<'EOF'\nimport pathlib\np = pathlib.Path(\"cron/parser.py\")\ns = p.read_text()\ns = s.replace('    elif \"-\" in body[1:] or (body.startswith(\"-\") and False):\\n', '    elif \"-\" in body[1:]:\\n')\np.write_text(s)\nEOF\ncat > tests/test_errors.py <<'EOF'\nimport pytest\n\nfrom cron.parser import CronError, parse\n\n\n@pytest.mark.parametrize(\n    \"expr, field\",\n    [\n        (\"99 * * * *\", \"minute\"\"minute\"),\n        (\"* 25 * * *\", \"hour\"),\n        (\"* * 0 * *\", \"day-of-month\"),\n        (\"* * * 13 *\", \"month\"),\n        (\"* * * * 8\", \"day-of-week\"),\n        (\"* * * FOO *\", \"month\"),\n        (\"* * * * nope\", \"day-of-week\"),\n        (\"5-1 * * * *\", \"minute\"),\n        (\"*/0 * * * *\", \"minute\"),\n    ],\n)\ndef test_bad_value_names_its_field(expr, field):\n    with pytest.raises(CronError) as exc:\n        parse(expr)\n    assert field in str(exc.value)\n\n\ndef test_wrong_field_count():\n    with pytest.raises(CronError) as exc:\n        parse(\"* * *\")\n    assert \"5 fields\" in str(exc.value)\n\n\ndef test_unknown_macro():\n    with pytest.raises(CronError) as exc:\n        parse(\"@fortnightly\")\n    assert \"@fortnightly\" in str(exc.value)\n\n\ndef test_macros_expand():\n    assert parse(\"@daily\") == parse(\"0 0 * * *\")\n    assert parse(\"@hourly\") == parse(\"0 * * * *\")\n    assert parse(\"@weekly\") == parse(\"0 0 * * 0\")\n    assert parse(\"@monthly\") == parse(\"0 0 1 * *\")\n    assert parse(\"@yearly\") == parse(\"0 0 1 1 *\")\nEOF\nsed -i 's/\"minute\"\"minute\"/\"minute\"/' tests/test_errors.py && PATH=\"$PWD/.venv/bin:$PATH\" rtdd run 2>&1 | grep -E \"FAILED|failed|selected\" | head",
+      "seconds": 0.86,
+      "failed": false,
+      "at": "2026-09-13T12:55:54.197Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/rtdd\" && cat > tests/test_schedule.py <<'EOF'\nfrom datetime import datetime, timezone\nfrom zoneinfo import ZoneInfo\n\nfrom cron.schedule import matches, next_times\n\nUTC = timezone.utc\n\n\ndef test_every_minute_starts_after_the_given_time():\n    start = datetime(2025, 3, 1, 12, 0, tzinfo=UTC)\n    assert next_times(\"* * * * *\", start, 3) == [\n        datetime(2025, 3, 1, 12, 1, tzinfo=UTC),\n        datetime(2025, 3, 1, 12, 2, tzinfo=UTC),\n        datetime(2025, 3, 1, 12, 3, tzinfo=UTC),\n    ]\n\n\ndef test_daily_at_a_fixed_time():\n    start = datetime(2025, 3, 1, 12, 0, tzinfo=UTC)\n    assert next_times(\"30 2 * * *\", start, 2) == [\n        datetime(2025, 3, 2, 2, 30, tzinfo=UTC),\n        datetime(2025, 3, 3, 2, 30, tzinfo=UTC),\n    ]\n\n\ndef test_skips_months_and_seconds_are_dropped():\n    start = datetime(2025, 3, 1, 0, 0, 45, 123, tzinfo=UTC)\n    assert next_times(\"0 0 1 1 *\", start, 2) == [\n        datetime(2026, 1, 1, 0, 0, tzinfo=UTC),\n        datetime(2027, 1, 1, 0, 0, tzinfo=UTC),\n    ]\n\n\ndef test_day_of_month_and_day_of_week_are_ored_when_both_restricted():\n    # The 13th, plus every Friday.\n    start = datetime(2025, 6, 1, tzinfo=UTC)\n    got = next_times(\"0 0 13 * FRI\", start, 4)\n    assert got == [\n        datetime(2025, 6, 6, tzinfo=UTC),\n        datetime(2025, 6, 13, tzinfo=UTC),\n        datetime(2025, 6, 20, tzinfo=UTC),\n        datetime(2025, 6, 27, tzinfo=UTC),\n    ]\n\n\ndef test_day_of_week_alone_still_restricts():\n    start = datetime(2025, 6, 1, tzinfo=UTC)\n    assert next_times(\"0 0 * * MON\", start, 2) == [\n        datetime(2025, 6, 2, tzinfo=UTC),\n        datetime(2025, 6, 9, tzinfo=UTC),\n    ]\n\n\ndef test_matches_is_exact_to_the_minute():\n    assert matches(\"30 2 * * *\", datetime(2025, 3, 2, 2, 30, tzinfo=UTC))\n    assert not matches(\"30 2 * * *\", datetime(2025, 3, 2, 2, 31, tzinfo=UTC))\n\n\ndef test_times_are_computed_in_the_given_zone():\n    tz = ZoneInfo(\"America/New_York\")\n    start = datetime(2025, 6, 1, 0, 0, tzinfo=tz)\n    got = next_times(\"0 9 * * *\", start, 1, tz)\n    assert got == [datetime(2025, 6, 1, 9, 0, tzinfo=tz)]\n    assert got[0].astimezone(UTC) == datetime(2025, 6, 1, 13, 0, tzinfo=UTC)\nEOF\nPATH=\"$PWD/.venv/bin:$PATH\" rtdd run 2>&1 | grep -E \"FAILED|failed|error|selected\" | head",
+      "seconds": 1.02,
+      "failed": true,
+      "at": "2026-09-13T12:56:11.380Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/rtdd\" && cat > cron/schedule.py <<'EOF'\n\"\"\"Project a cron expression forward into real run times.\n\nMatching happens on the wall clock of the target zone, and each matching wall\ntime yields exactly one run:\n\n* A wall time inside a daylight-saving gap never happens, so the run fires once\n  at the instant the clock jumps forward instead of being lost.\n* A wall time inside a repeated hour happens twice, and only the first one runs,\n  so a fall-back boundary yields no duplicate.\n\"\"\"\n\nfrom datetime import datetime, timedelta, timezone\nfrom typing import Iterator\nfrom zoneinfo import ZoneInfo\n\nfrom .parser import CronExpr, CronError, parse\n\nUTC = timezone.utc\nMINUTE = timedelta(minutes=1)\n# How far ahead to look before calling an expression unsatisfiable. Long enough\n# to clear a Feb 29 on a non-leap year, short enough to fail fast on \"31 Feb\".\nHORIZON = timedelta(days=366 * 8)\n\n\ndef next_times(\n    expr: str | CronExpr,\n    start: datetime,\n    count: int,\n    tz: timezone | ZoneInfo = UTC,\n) -> list[datetime]:\n    \"\"\"The next `count` run times strictly after `start`, in zone `tz`.\"\"\"\n    if count < 0:\n        raise ValueError(\"count must not be negative\")\n    out = []\n    for run in iter_times(expr, start, tz):\n        if len(out) == count:\n            break\n        out.append(run)\n    return out\n\n\ndef iter_times(\n    expr: str | CronExpr,\n    start: datetime,\n    tz: timezone | ZoneInfo = UTC,\n) -> Iterator[datetime]:\n    \"\"\"Yield every run time strictly after `start`, in zone `tz`.\"\"\"\n    cron = parse(expr) if isinstance(expr, str) else expr\n    local = _localize(start, tz)\n    cursor = local.replace(second=0, microsecond=0, tzinfo=None) + MINUTE\n    deadline = cursor + HORIZON\n    last: datetime | None = None\n\n    while True:\n        wall = _next_wall_match(cron, cursor, deadline)\n        instant = _to_instant(wall, tz)\n        if last is None or instant > last:\n            last = instant\n            yield instant\n        cursor = wall + MINUTE\n        deadline = cursor + HORIZON\n\n\ndef matches(\n    expr: str | CronExpr,\n    when: datetime,\n    tz: timezone | ZoneInfo = UTC,\n) -> bool:\n    \"\"\"True if `expr` would run at `when`, to the minute.\"\"\"\n    cron = parse(expr) if isinstance(expr, str) else expr\n    local = _localize(when, tz).replace(tzinfo=None)\n    return (\n        local.minute in cron.minutes\n        and local.hour in cron.hours\n        and local.month in cron.months\n        and _day_matches(cron, local)\n    )\n\n\ndef _localize(when: datetime, tz: timezone | ZoneInfo) -> datetime:\n    if when.tzinfo is None:\n        return when.replace(tzinfo=tz)\n    return when.astimezone(tz)\n\n\ndef _next_wall_match(cron: CronExpr, dt: datetime, deadline: datetime) -> datetime:\n    \"\"\"The first wall-clock minute at or after `dt` that every field matches.\"\"\"\n    while dt < deadline:\n        if dt.month not in cron.months:\n            dt = _start_of_next_month(dt)\n            continue\n        if not _day_matches(cron, dt):\n            dt = (dt + timedelta(days=1)).replace(hour=0, minute=0)\n            continue\n        if dt.hour not in cron.hours:\n            dt = (dt + timedelta(hours=1)).replace(minute=0)\n            continue\n        if dt.minute not in cron.minutes:\n            dt += MINUTE\n            continue\n        return dt\n    raise CronError(\n        f\"expression has no run time within {HORIZON.days // 366} years \"\n        f\"of {dt.date()} \u2014 check the day-of-month and month fields\"\n    )\n\n\ndef _start_of_next_month(dt: datetime) -> datetime:\n    year, month = (dt.year + 1, 1) if dt.month == 12 else (dt.year, dt.month + 1)\n    return datetime(year, month, 1)\n\n\ndef _day_matches(cron: CronExpr, dt: datetime) -> bool:\n    dom = dt.day in cron.days_of_month\n    dow = (dt.weekday() + 1) % 7 in cron.days_of_week\n    if cron.dom_restricted and cron.dow_restricted:\n        return dom or dow\n    return dom and dow\n\n\ndef _to_instant(wall: datetime, tz: timezone | ZoneInfo) -> datetime:\n    \"\"\"Resolve a wall-clock time to the instant it runs at.\n\n    An ambiguous wall time resolves to its first occurrence. A wall time that a\n    forward jump skipped resolves to the instant the jump lands on.\n    \"\"\"\n    aware = wall.replace(tzinfo=tz)\n    if _exists(aware, wall):\n        return aware\n    probe = wall\n    for _ in range(24 * 60):\n        probe += MINUTE\n        aware = probe.replace(tzinfo=tz)\n        if _exists(aware, probe):\n            return aware\n    raise CronError(f\"cannot resolve {wall} in {tz}\")\n\n\ndef _exists(aware: datetime, wall: datetime) -> bool:\n    return aware.astimezone(UTC).astimezone(aware.tzinfo).replace(tzinfo=None) == wall\nEOF\nPATH=\"$PWD/.venv/bin:$PATH\" rtdd run 2>&1 | grep -E \"FAILED|failed|selected|Error\" | head",
+      "seconds": 0.91,
+      "failed": false,
+      "at": "2026-09-13T12:56:52.761Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/rtdd\" && cat > tests/test_dst.py <<'EOF'\n\"\"\"Daylight-saving boundaries: every matching wall time runs exactly once.\"\"\"\n\nfrom datetime import datetime, timezone\nfrom zoneinfo import ZoneInfo\n\nfrom cron.schedule import next_times\n\nUTC = timezone.utc\nNY = ZoneInfo(\"America/New_York\")\n\n\ndef utcs(runs):\n    return [r.astimezone(UTC) for r in runs]\n\n\ndef test_time_lost_to_the_spring_forward_runs_at_the_jump():\n    # 2025-03-09 02:30 America/New_York does not exist; the clock goes 01:59 -> 03:00.\n    runs = next_times(\"30 2 * * *\", datetime(2025, 3, 8, 12, tzinfo=NY), 2, NY)\n    assert utcs(runs) == [\n        datetime(2025, 3, 9, 7, 0, tzinfo=UTC),  # 03:00 EDT, the instant of the jump\n        datetime(2025, 3, 10, 6, 30, tzinfo=UTC),  # 02:30 EDT\n    ]\n\n\ndef test_spring_forward_yields_no_duplicate_for_an_hourly_job():\n    runs = next_times(\"0 * * * *\", datetime(2025, 3, 9, 0, 30, tzinfo=NY), 3, NY)\n    assert utcs(runs) == [\n        datetime(2025, 3, 9, 6, 0, tzinfo=UTC),  # 01:00 EST\n        datetime(2025, 3, 9, 7, 0, tzinfo=UTC),  # 03:00 EDT (02:00 never happens)\n        datetime(2025, 3, 9, 8, 0, tzinfo=UTC),  # 04:00 EDT\n    ]\n    assert len(set(utcs(runs))) == 3\n\n\ndef test_repeated_hour_runs_once_not_twice():\n    # 2025-11-02 01:30 America/New_York happens twice, at 05:30Z and 06:30Z.\n    runs = next_times(\"30 1 * * *\", datetime(2025, 11, 1, 12, tzinfo=NY), 2, NY)\n    assert utcs(runs) == [\n        datetime(2025, 11, 2, 5, 30, tzinfo=UTC),  # 01:30 EDT, the first one\n        datetime(2025, 11, 3, 6, 30, tzinfo=UTC),  # 01:30 EST the next day\n    ]\n\n\ndef test_every_minute_across_the_fall_back_never_repeats_an_instant():\n    runs = next_times(\"* * * * *\", datetime(2025, 11, 2, 0, 55, tzinfo=NY), 30, NY)\n    assert len(set(utcs(runs))) == len(runs)\n    assert utcs(runs) == sorted(utcs(runs))\n\n\ndef test_every_minute_across_the_spring_forward_never_repeats_an_instant():\n    runs = next_times(\"* * * * *\", datetime(2025, 3, 9, 1, 55, tzinfo=NY), 30, NY)\n    assert len(set(utcs(runs))) == len(runs)\n    assert utcs(runs) == sorted(utcs(runs))\n    # The first run after 01:59 EST is the jump itself.\n    assert utcs(runs)[:2] == [\n        datetime(2025, 3, 9, 6, 56, tzinfo=UTC),\n        datetime(2025, 3, 9, 6, 57, tzinfo=UTC),\n    ]\nEOF\nPATH=\"$PWD/.venv/bin:$PATH\" rtdd run 2>&1 | grep -E \"FAILED|failed|assert|selected\" | head -20",
+      "seconds": 0.97,
+      "failed": false,
+      "at": "2026-09-13T12:57:20.777Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/rtdd\" && cat > tests/test_describe.py <<'EOF'\nimport pytest\n\nfrom cron.describe import describe\n\n\n@pytest.mark.parametrize(\n    \"expr, text\",\n    [\n        (\"* * * * *\", \"Every minute, every day.\"),\n        (\"*/15 * * * *\", \"Every 15 minutes, every day.\"),\n        (\"0 * * * *\", \"At minute 0 of every hour, every day.\"),\n        (\"30 9 * * *\", \"At 09:30, every day.\"),\n        (\"0 9 * * 1-5\", \"At 09:00, Monday through Friday.\"),\n        (\"0 0 1 * *\", \"At 00:00, on the 1st of the month.\"),\n        (\"0 0 1,15 * *\", \"At 00:00, on the 1st and 15th of the month.\"),\n        (\"0 0 13 * FRI\", \"At 00:00, on the 13th of the month or on Friday.\"),\n        (\"0 12 * JAN,JUL *\", \"At 12:00, every day, in January and July.\"),\n        (\"@weekly\", \"At 00:00, on Sunday.\"),\n        (\"0 9,17 * * *\", \"At 09:00 and 17:00, every day.\"),\n    ],\n)\ndef test_describe(expr, text):\n    assert describe(expr) == text\nEOF\nPATH=\"$PWD/.venv/bin:$PATH\" rtdd run 2>&1 | grep -E \"FAILED|failed|error|selected\" | head -5",
+      "seconds": 1.14,
+      "failed": true,
+      "at": "2026-09-13T12:57:37.967Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/rtdd\" && cat > cron/describe.py <<'EOF'\n\"\"\"Turn a cron expression into one plain-English line.\"\"\"\n\nfrom .parser import CronExpr, parse\n\nDAY_WORDS = (\"Sunday\", \"Monday\", \"Tuesday\", \"Wednesday\", \"Thursday\", \"Friday\", \"Saturday\")\nMONTH_WORDS = (\n    \"January\", \"February\", \"March\", \"April\", \"May\", \"June\",\n    \"July\", \"August\", \"September\", \"October\", \"November\", \"December\",\n)\n\n\ndef describe(expr: str | CronExpr) -> str:\n    \"\"\"One sentence saying when `expr` runs.\"\"\"\n    cron = parse(expr) if isinstance(expr, str) else expr\n    parts = [_when(cron), _days(cron)]\n    if len(cron.months) < 12:\n        parts.append(\"in \" + _join(MONTH_WORDS[m - 1] for m in sorted(cron.months)))\n    return \", \".join(parts) + \".\"\n\n\ndef _when(cron: CronExpr) -> str:\n    every_hour = len(cron.hours) == 24\n    if every_hour:\n        if len(cron.minutes) == 60:\n            return \"Every minute\"\n        step = _step(sorted(cron.minutes), 60)\n        if step:\n            return f\"Every {step} minutes\"\n        return \"At minute \" + _join(str(m) for m in sorted(cron.minutes)) + \" of every hour\"\n    times = [\n        f\"{h:02d}:{m:02d}\" for h in sorted(cron.hours) for m in sorted(cron.minutes)\n    ]\n    if len(times) <= 4:\n        return \"At \" + _join(times)\n    return (\n        \"At minute \" + _join(str(m) for m in sorted(cron.minutes))\n        + \" of hour \" + _join(str(h) for h in sorted(cron.hours))\n    )\n\n\ndef _days(cron: CronExpr) -> str:\n    clauses = []\n    if cron.dom_restricted:\n        clauses.append(\n            \"on the \" + _join(_ordinal(d) for d in sorted(cron.days_of_month))\n            + \" of the month\"\n        )\n    if cron.dow_restricted:\n        clauses.append(\"on \" + _run_or_list(sorted(cron.days_of_week)))\n    if not clauses:\n        return \"every day\"\n    # Both restricted means either one is enough to fire, so say \"or\".\n    return \" or \".join(clauses)\n\n\ndef _run_or_list(days: list[int]) -> str:\n    if len(days) > 2 and days == list(range(days[0], days[-1] + 1)):\n        return f\"{DAY_WORDS[days[0]]} through {DAY_WORDS[days[-1]]}\"\n    return _join(DAY_WORDS[d] for d in days)\n\n\ndef _step(values: list[int], size: int) -> int | None:\n    \"\"\"The step of `values` if they are 0, n, 2n, ... across the whole field.\"\"\"\n    if len(values) < 2 or values[0] != 0:\n        return None\n    step = values[1]\n    if values == list(range(0, size, step)):\n        return step\n    return None\n\n\ndef _ordinal(n: int) -> str:\n    if 11 <= n % 100 <= 13:\n        return f\"{n}th\"\n    return f\"{n}{ {1: 'st', 2: 'nd', 3: 'rd'}.get(n % 10, 'th') }\"\n\n\ndef _join(items) -> str:\n    items = list(items)\n    if len(items) == 1:\n        return items[0]\n    return \", \".join(items[:-1]) + \" and \" + items[-1]\nEOF\nPATH=\"$PWD/.venv/bin:$PATH\" rtdd run 2>&1 | grep -E \"FAILED|assert|Error|failed|selected\" | head -20",
+      "seconds": 1.25,
+      "failed": true,
+      "at": "2026-09-13T12:57:51.956Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/rtdd\" && python3 - <<'EOF'\nimport pathlib\np = pathlib.Path(\"tests/test_describe.py\")\ns = p.read_text().replace('\"At 09:00, Monday through Friday.\"', '\"At 09:00, on Monday through Friday.\"')\np.write_text(s)\nEOF\nPATH=\"$PWD/.venv/bin:$PATH\" rtdd run 2>&1 | grep -E \"FAILED|failed|selected\" | head",
+      "seconds": 1.08,
+      "failed": false,
+      "at": "2026-09-13T12:58:00.398Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/rtdd\" && cat > tests/test_cli.py <<'EOF'\nfrom cron.cli import main\n\n\ndef run(capsys, *argv):\n    code = main(list(argv))\n    out, err = capsys.readouterr()\n    return code, out, err\n\n\ndef test_next_prints_one_iso_time_per_line(capsys):\n    code, out, _ = run(\n        capsys, \"next\", \"0 9 * * *\", \"--count\", \"2\", \"--from\", \"2025-06-01T00:00:00Z\"\n    )\n    assert code == 0\n    assert out.splitlines() == [\n        \"2025-06-01T09:00:00+00:00\",\n        \"2025-06-02T09:00:00+00:00\",\n    ]\n\n\ndef test_next_honours_the_zone(capsys):\n    code, out, _ = run(\n        capsys,\n        \"next\",\n        \"0 9 * * *\",\n        \"--count\",\n        \"1\",\n        \"--from\",\n        \"2025-06-01T00:00:00\",\n        \"--tz\",\n        \"America/New_York\",\n    )\n    assert code == 0\n    assert out.strip() == \"2025-06-01T09:00:00-04:00\"\n\n\ndef test_next_defaults_to_one(capsys):\n    code, out, _ = run(capsys, \"next\", \"@daily\", \"--from\", \"2025-06-01T12:00:00Z\")\n    assert code == 0\n    assert out.strip() == \"2025-06-02T00:00:00+00:00\"\n\n\ndef test_describe(capsys):\n    code, out, _ = run(capsys, \"describe\", \"0 9 * * 1-5\")\n    assert code == 0\n    assert out.strip() == \"At 09:00, on Monday through Friday.\"\n\n\ndef test_match_exits_zero_when_it_would_run(capsys):\n    code, _, _ = run(capsys, \"match\", \"0 9 * * *\", \"2025-06-01T09:00:00Z\")\n    assert code == 0\n\n\ndef test_match_exits_one_when_it_would_not(capsys):\n    code, _, _ = run(capsys, \"match\", \"0 9 * * *\", \"2025-06-01T09:01:00Z\")\n    assert code == 1\n\n\ndef test_match_uses_the_zone(capsys):\n    code, _, _ = run(\n        capsys, \"match\", \"0 9 * * *\", \"2025-06-01T13:00:00Z\", \"--tz\", \"America/New_York\"\n    )\n    assert code == 0\n\n\ndef test_bad_expression_names_the_field_without_a_traceback(capsys):\n    code, out, err = run(capsys, \"describe\", \"* 99 * * *\")\n    assert code == 2\n    assert out == \"\"\n    assert \"hour\" in err\n    assert \"Traceback\" not in err\n\n\ndef test_bad_timestamp_is_reported(capsys):\n    code, _, err = run(capsys, \"match\", \"* * * * *\", \"not-a-time\")\n    assert code == 2\n    assert \"not-a-time\" in err\n\n\ndef test_unknown_zone_is_reported(capsys):\n    code, _, err = run(capsys, \"next\", \"* * * * *\", \"--tz\", \"Mars/Olympus\")\n    assert code == 2\n    assert \"Mars/Olympus\" in err\nEOF\nPATH=\"$PWD/.venv/bin:$PATH\" rtdd run 2>&1 | grep -E \"FAILED|failed|error|selected\" | head -5",
+      "seconds": 0.95,
+      "failed": true,
+      "at": "2026-09-13T12:58:19.216Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/rtdd\" && cat > cron/cli.py <<'EOF'\n\"\"\"The `cron` command line: next, describe, match.\"\"\"\n\nimport argparse\nimport sys\nfrom datetime import datetime, timezone\nfrom zoneinfo import ZoneInfo, ZoneInfoNotFoundError\n\nfrom .describe import describe\nfrom .parser import CronError\nfrom .schedule import matches, next_times\n\nUTC = timezone.utc\n\n\ndef build_parser() -> argparse.ArgumentParser:\n    parser = argparse.ArgumentParser(\n        prog=\"cron\", description=\"Parse cron expressions and project future run times.\"\n    )\n    sub = parser.add_subparsers(dest=\"command\", required=True)\n\n    nxt = sub.add_parser(\"next\", help=\"print the next run times\")\n    nxt.add_argument(\"expr\", help=\"a cron expression, e.g. '0 9 * * 1-5'\")\n    nxt.add_argument(\"--count\", type=int, default=1, help=\"how many times to print\")\n    nxt.add_argument(\"--from\", dest=\"start\", help=\"ISO 8601 start time (default: now)\")\n    nxt.add_argument(\"--tz\", default=\"UTC\", help=\"IANA zone name (default: UTC)\")\n\n    desc = sub.add_parser(\"describe\", help=\"say in English when it runs\")\n    desc.add_argument(\"expr\")\n\n    match = sub.add_parser(\"match\", help=\"exit 0 if it would run at that time\")\n    match.add_argument(\"expr\")\n    match.add_argument(\"when\", help=\"ISO 8601 timestamp\")\n    match.add_argument(\"--tz\", default=\"UTC\", help=\"IANA zone name (default: UTC)\")\n\n    return parser\n\n\ndef main(argv: list[str] | None = None) -> int:\n    args = build_parser().parse_args(argv)\n    try:\n        return _dispatch(args)\n    except (CronError, ValueError) as exc:\n        print(f\"cron: {exc}\", file=sys.stderr)\n        return 2\n\n\ndef _dispatch(args: argparse.Namespace) -> int:\n    if args.command == \"describe\":\n        print(describe(args.expr))\n        return 0\n\n    tz = _zone(args.tz)\n    if args.command == \"next\":\n        if args.count < 1:\n            raise ValueError(\"--count must be 1 or more\")\n        start = _timestamp(args.start, tz) if args.start else datetime.now(tz)\n        for run in next_times(args.expr, start, args.count, tz):\n            print(run.isoformat())\n        return 0\n\n    return 0 if matches(args.expr, _timestamp(args.when, tz), tz) else 1\n\n\ndef _zone(name: str) -> ZoneInfo | timezone:\n    try:\n        return ZoneInfo(name)\n    except (ZoneInfoNotFoundError, ValueError) as exc:\n        raise ValueError(f\"unknown time zone {name!r}: {exc}\") from None\n\n\ndef _timestamp(text: str, tz: ZoneInfo | timezone) -> datetime:\n    try:\n        when = datetime.fromisoformat(text)\n    except ValueError:\n        raise ValueError(f\"not an ISO 8601 timestamp: {text!r}\") from None\n    return when if when.tzinfo else when.replace(tzinfo=tz)\n\n\nif __name__ == \"__main__\":\n    raise SystemExit(main())\nEOF\ncat > cron/__main__.py <<'EOF'\nfrom .cli import main\n\nraise SystemExit(main())\nEOF\nPATH=\"$PWD/.venv/bin:$PATH\" rtdd run 2>&1 | grep -E \"FAILED|assert|failed|selected\" | head -20",
+      "seconds": 1.35,
+      "failed": false,
+      "at": "2026-09-13T12:58:33.487Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/rtdd\" && cat >> tests/test_describe.py <<'EOF'\n\n\n@pytest.mark.parametrize(\n    \"expr, text\",\n    [\n        (\"*/15 9-17 * * 1-5\", \"Every 15 minutes from 09:00 to 17:45, on Monday through Friday.\"),\n        (\"0 9-17 * * *\", \"Every hour from 09:00 to 17:00, every day.\"),\n    ],\n)\ndef test_describe_spans(expr, text):\n    assert describe(expr) == text\nEOF\nPATH=\"$PWD/.venv/bin:$PATH\" rtdd run 2>&1 | grep -E \"FAILED|failed|selected\" | head",
+      "seconds": 1.23,
+      "failed": true,
+      "at": "2026-09-13T12:58:52.135Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/rtdd\" && python3 - <<'PY'\nimport pathlib\np = pathlib.Path(\"cron/describe.py\")\ns = p.read_text()\nold = '''    times = [\n        f\"{h:02d}:{m:02d}\" for h in sorted(cron.hours) for m in sorted(cron.minutes)\n    ]\n    if len(times) <= 4:\n        return \"At \" + _join(times)\n'''\nnew = '''    hours = sorted(cron.hours)\n    minutes = sorted(cron.minutes)\n    times = [f\"{h:02d}:{m:02d}\" for h in hours for m in minutes]\n    if len(times) <= 4:\n        return \"At \" + _join(times)\n    if hours == list(range(hours[0], hours[-1] + 1)):\n        span = f\" from {hours[0]:02d}:{minutes[0]:02d} to {hours[-1]:02d}:{minutes[-1]:02d}\"\n        if minutes == [0]:\n            return \"Every hour\" + span\n        step = _step(minutes, 60)\n        if step:\n            return f\"Every {step} minutes\" + span\n'''\nassert old in s\np.write_text(s.replace(old, new))\nPY\nPATH=\"$PWD/.venv/bin:$PATH\" rtdd run 2>&1 | grep -E \"FAILED|failed|selected|assert\" | head",
+      "seconds": 1.05,
+      "failed": false,
+      "at": "2026-09-13T12:58:59.265Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/rtdd\" && PATH=\"$PWD/.venv/bin:$PATH\" rtdd verify 2>&1 | tail -5; echo \"=== UNCOVERED ===\"; PATH=\"$PWD/.venv/bin:$PATH\" rtdd which 2>&1 | grep -E \"UNCOVERED\" | head -20",
+      "seconds": 0.24,
+      "failed": false,
+      "at": "2026-09-13T12:59:03.746Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/rtdd\" && PATH=\"$PWD/.venv/bin:$PATH\" pytest -q 2>&1 | tail -3; PATH=\"$PWD/.venv/bin:$PATH\" rtdd which --json 2>&1 | python3 -c \"import sys,json;d=json.load(sys.stdin);print({k:d[k] for k in ('tier','selection_fidelity','map_tests')});print('uncovered:',d['uncovered'])\"",
+      "seconds": 0.69,
+      "failed": true,
+      "at": "2026-09-13T12:59:07.499Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/rtdd\" && PATH=\"$PWD/.venv/bin:$PATH\" rtdd run --json 2>&1 | python3 -c \"\nimport sys,json;d=json.load(sys.stdin)\nprint('tier',d.get('tier'),'fidelity',d.get('selection_fidelity'),'tests',len(d.get('tests') or []))\nu=d.get('uncovered');print('uncovered:',json.dumps(u)[:600])\n\"",
+      "seconds": 1.06,
+      "failed": false,
+      "at": "2026-09-13T12:59:15.220Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/rtdd\" && cat >> tests/test_cli.py <<'EOF'\n\n\ndef test_python_m_cron_runs_end_to_end():\n    import subprocess\n    import sys\n\n    done = subprocess.run(\n        [sys.executable, \"-m\", \"cron\", \"describe\", \"@daily\"],\n        capture_output=True,\n        text=True,\n    )\n    assert done.returncode == 0\n    assert done.stdout.strip() == \"At 00:00, every day.\"\nEOF\nPATH=\"$PWD/.venv/bin:$PATH\" rtdd run 2>&1 | grep -E \"FAILED|failed|selected\" | head -3",
+      "seconds": 1.17,
+      "failed": false,
+      "at": "2026-09-13T12:59:23.378Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/rtdd\" && PATH=\"$PWD/.venv/bin:$PATH\" rtdd seed 2>&1 | tail -2 && PATH=\"$PWD/.venv/bin:$PATH\" rtdd status 2>&1 | tail -6 && git add -A && git status --short",
+      "seconds": 0.98,
+      "failed": false,
+      "at": "2026-09-13T12:59:27.380Z"
+    }
+  ]
+}

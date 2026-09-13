@@ -1,0 +1,407 @@
+{
+  "label": "tdd",
+  "workspace": "/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/tdd",
+  "sessions": [
+    "17a0b7df-987f-4f93-8c6e-a92fea3398bd"
+  ],
+  "started": "2026-09-13T12:48:31.436Z",
+  "ended": "2026-09-13T13:06:41.121Z",
+  "models": {
+    "claude-opus-5": 131
+  },
+  "wall_clock_s": 1089.7,
+  "active_s": 994.1,
+  "test_seconds": 53.2,
+  "selector_seconds": 0,
+  "test_share_of_active": 0.053,
+  "test_runs": 60,
+  "selector_queries": 0,
+  "failed_runs": 26,
+  "red_green_cycles": 24,
+  "mean_run_s": 0.89,
+  "slowest_run_s": 18.71,
+  "assistant_turns": 131,
+  "tokens": {
+    "input_tokens": 262,
+    "output_tokens": 95311,
+    "cache_read_input_tokens": 11128649,
+    "cache_creation_input_tokens": 171699,
+    "thinking_tokens": 39089
+  },
+  "billable_tokens": 267272,
+  "tool_calls": {
+    "Bash": 69
+  },
+  "project": {
+    "tests_reported": 52,
+    "test_suites": 8,
+    "main_files": 1,
+    "test_files": 8,
+    "main_loc": 345,
+    "test_loc": 384,
+    "commits": 2
+  },
+  "rtdd": null,
+  "runs": [
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/tdd\" && cat > tests/test_match.py <<'EOF'\nfrom datetime import datetime, timezone\n\nfrom cron import parse\n\n\ndef test_matches_exact_minute_and_hour():\n    schedule = parse(\"30 2 * * *\")\n    assert schedule.matches(datetime(2024, 1, 1, 2, 30, tzinfo=timezone.utc))\n    assert not schedule.matches(datetime(2024, 1, 1, 2, 31, tzinfo=timezone.utc))\nEOF\n.venv/bin/pytest -q 2>&1 | tail -5",
+      "seconds": 0.65,
+      "failed": false,
+      "at": "2026-09-13T12:52:20.503Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/tdd\" && cat > cron.py <<'EOF'\n\"\"\"Parse cron expressions and project future run times.\"\"\"\n\nfrom dataclasses import dataclass\n\n\n@dataclass(frozen=True)\nclass Schedule:\n    minutes: frozenset[int]\n    hours: frozenset[int]\n\n    def matches(self, when) -> bool:\n        return when.minute in self.minutes and when.hour in self.hours\n\n\ndef parse(expression: str) -> Schedule:\n    minute, hour, _dom, _month, _dow = expression.split()\n    return Schedule(minutes=frozenset({int(minute)}), hours=frozenset({int(hour)}))\nEOF\n.venv/bin/pytest -q 2>&1 | tail -3",
+      "seconds": 0.57,
+      "failed": false,
+      "at": "2026-09-13T12:52:25.693Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/tdd\" && cat >> tests/test_match.py <<'EOF'\n\n\ndef test_star_matches_every_minute_of_every_hour():\n    schedule = parse(\"* * * * *\")\n    assert schedule.matches(datetime(2024, 3, 7, 13, 47, tzinfo=timezone.utc))\n    assert schedule.matches(datetime(2024, 3, 7, 0, 0, tzinfo=timezone.utc))\nEOF\n.venv/bin/pytest -q 2>&1 | tail -4",
+      "seconds": 0.52,
+      "failed": true,
+      "at": "2026-09-13T12:52:32.237Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/tdd\" && cat > cron.py <<'EOF'\n\"\"\"Parse cron expressions and project future run times.\"\"\"\n\nfrom dataclasses import dataclass\n\n\n@dataclass(frozen=True)\nclass Schedule:\n    minutes: frozenset[int]\n    hours: frozenset[int]\n\n    def matches(self, when) -> bool:\n        return when.minute in self.minutes and when.hour in self.hours\n\n\ndef _field(text: str, low: int, high: int) -> frozenset[int]:\n    if text == \"*\":\n        return frozenset(range(low, high + 1))\n    return frozenset({int(text)})\n\n\ndef parse(expression: str) -> Schedule:\n    minute, hour, _dom, _month, _dow = expression.split()\n    return Schedule(minutes=_field(minute, 0, 59), hours=_field(hour, 0, 23))\nEOF\n.venv/bin/pytest -q 2>&1 | tail -3",
+      "seconds": 0.42,
+      "failed": false,
+      "at": "2026-09-13T12:52:38.814Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/tdd\" && cat >> tests/test_match.py <<'EOF'\n\n\ndef test_day_of_month_and_month_restrict_the_match():\n    schedule = parse(\"0 0 25 12 *\")\n    assert schedule.matches(datetime(2024, 12, 25, 0, 0, tzinfo=timezone.utc))\n    assert not schedule.matches(datetime(2024, 12, 24, 0, 0, tzinfo=timezone.utc))\n    assert not schedule.matches(datetime(2024, 11, 25, 0, 0, tzinfo=timezone.utc))\nEOF\n.venv/bin/pytest -q 2>&1 | tail -4",
+      "seconds": 0.5,
+      "failed": true,
+      "at": "2026-09-13T12:52:44.649Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/tdd\" && cat > cron.py <<'EOF'\n\"\"\"Parse cron expressions and project future run times.\"\"\"\n\nfrom dataclasses import dataclass\n\n\n@dataclass(frozen=True)\nclass Schedule:\n    minutes: frozenset[int]\n    hours: frozenset[int]\n    days_of_month: frozenset[int]\n    months: frozenset[int]\n\n    def matches(self, when) -> bool:\n        return (\n            when.minute in self.minutes\n            and when.hour in self.hours\n            and when.day in self.days_of_month\n            and when.month in self.months\n        )\n\n\ndef _field(text: str, low: int, high: int) -> frozenset[int]:\n    if text == \"*\":\n        return frozenset(range(low, high + 1))\n    return frozenset({int(text)})\n\n\ndef parse(expression: str) -> Schedule:\n    minute, hour, dom, month, _dow = expression.split()\n    return Schedule(\n        minutes=_field(minute, 0, 59),\n        hours=_field(hour, 0, 23),\n        days_of_month=_field(dom, 1, 31),\n        months=_field(month, 1, 12),\n    )\nEOF\n.venv/bin/pytest -q 2>&1 | tail -3",
+      "seconds": 0.39,
+      "failed": false,
+      "at": "2026-09-13T12:52:50.675Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/tdd\" && cat >> tests/test_match.py <<'EOF'\n\n\ndef test_day_of_week_zero_is_sunday():\n    schedule = parse(\"0 0 * * 0\")\n    # 2024-12-01 is a Sunday, 2024-12-02 a Monday.\n    assert schedule.matches(datetime(2024, 12, 1, 0, 0, tzinfo=timezone.utc))\n    assert not schedule.matches(datetime(2024, 12, 2, 0, 0, tzinfo=timezone.utc))\nEOF\n.venv/bin/pytest -q 2>&1 | tail -4",
+      "seconds": 0.47,
+      "failed": true,
+      "at": "2026-09-13T12:52:56.558Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/tdd\" && python3 - <<'PY'\nimport pathlib\np = pathlib.Path(\"cron.py\")\ns = p.read_text()\ns = s.replace(\"\"\"    days_of_month: frozenset[int]\n    months: frozenset[int]\n\"\"\", \"\"\"    days_of_month: frozenset[int]\n    months: frozenset[int]\n    days_of_week: frozenset[int]\n\"\"\")\ns = s.replace(\"\"\"            and when.month in self.months\n        )\"\"\", \"\"\"            and when.month in self.months\n            and _cron_weekday(when) in self.days_of_week\n        )\n\n\ndef _cron_weekday(when) -> int:\n    \\\"\\\"\\\"Sunday is 0 in cron, but 6 in datetime.weekday().\\\"\\\"\\\"\n    return (when.weekday() + 1) % 7\"\"\")\ns = s.replace(\"\"\"    minute, hour, dom, month, _dow = expression.split()\"\"\", \"\"\"    minute, hour, dom, month, dow = expression.split()\"\"\")\ns = s.replace(\"\"\"        months=_field(month, 1, 12),\n    )\"\"\", \"\"\"        months=_field(month, 1, 12),\n        days_of_week=_field(dow, 0, 6),\n    )\"\"\")\np.write_text(s)\nPY\n.venv/bin/pytest -q 2>&1 | tail -3",
+      "seconds": 0.45,
+      "failed": false,
+      "at": "2026-09-13T12:53:03.854Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/tdd\" && cat >> tests/test_match.py <<'EOF'\n\n\ndef test_restricted_day_of_month_or_day_of_week_matches_either():\n    schedule = parse(\"0 0 13 * 5\")\n    assert schedule.matches(datetime(2024, 9, 13, 0, 0, tzinfo=timezone.utc))  # Friday the 13th\n    assert schedule.matches(datetime(2024, 10, 13, 0, 0, tzinfo=timezone.utc))  # a Sunday 13th\n    assert schedule.matches(datetime(2024, 9, 6, 0, 0, tzinfo=timezone.utc))  # a Friday\n    assert not schedule.matches(datetime(2024, 9, 5, 0, 0, tzinfo=timezone.utc))  # Thursday 5th\nEOF\n.venv/bin/pytest -q 2>&1 | tail -4",
+      "seconds": 0.81,
+      "failed": true,
+      "at": "2026-09-13T12:53:14.514Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/tdd\" && python3 - <<'PY'\nimport pathlib\np = pathlib.Path(\"cron.py\")\ns = p.read_text()\ns = s.replace(\"\"\"    days_of_week: frozenset[int]\n\"\"\", \"\"\"    days_of_week: frozenset[int]\n    day_of_month_restricted: bool\n    day_of_week_restricted: bool\n\"\"\")\ns = s.replace(\"\"\"            and when.day in self.days_of_month\n            and when.month in self.months\n            and _cron_weekday(when) in self.days_of_week\n        )\"\"\", \"\"\"            and when.month in self.months\n            and self._day_matches(when)\n        )\n\n    def _day_matches(self, when) -> bool:\n        by_month_day = when.day in self.days_of_month\n        by_week_day = _cron_weekday(when) in self.days_of_week\n        if self.day_of_month_restricted and self.day_of_week_restricted:\n            return by_month_day or by_week_day\n        return by_month_day and by_week_day\"\"\")\ns = s.replace(\"\"\"        days_of_week=_field(dow, 0, 6),\n    )\"\"\", \"\"\"        days_of_week=_field(dow, 0, 6),\n        day_of_month_restricted=dom != \"*\",\n        day_of_week_restricted=dow != \"*\",\n    )\"\"\")\np.write_text(s)\nPY\n.venv/bin/pytest -q 2>&1 | tail -3",
+      "seconds": 0.44,
+      "failed": false,
+      "at": "2026-09-13T12:53:24.885Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/tdd\" && cat > tests/test_field_syntax.py <<'EOF'\nfrom datetime import datetime, timezone\n\nfrom cron import parse\n\n\ndef at(hour, minute, day=1, month=1):\n    return datetime(2024, month, day, hour, minute, tzinfo=timezone.utc)\n\n\ndef test_list_matches_each_listed_value():\n    schedule = parse(\"1,5 * * * *\")\n    assert schedule.matches(at(0, 1))\n    assert schedule.matches(at(0, 5))\n    assert not schedule.matches(at(0, 3))\nEOF\n.venv/bin/pytest -q 2>&1 | tail -4",
+      "seconds": 0.47,
+      "failed": true,
+      "at": "2026-09-13T12:53:32.433Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/tdd\" && python3 - <<'PY'\nimport pathlib\np = pathlib.Path(\"cron.py\")\ns = p.read_text()\ns = s.replace('''def _field(text: str, low: int, high: int) -> frozenset[int]:\n    if text == \"*\":\n        return frozenset(range(low, high + 1))\n    return frozenset({int(text)})''', '''def _field(text: str, low: int, high: int) -> frozenset[int]:\n    values: set[int] = set()\n    for term in text.split(\",\"):\n        values |= _term(term, low, high)\n    return frozenset(values)\n\n\ndef _term(text: str, low: int, high: int) -> set[int]:\n    if text == \"*\":\n        return set(range(low, high + 1))\n    return {int(text)}''')\np.write_text(s)\nPY\n.venv/bin/pytest -q 2>&1 | tail -3",
+      "seconds": 0.51,
+      "failed": false,
+      "at": "2026-09-13T12:53:37.548Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/tdd\" && cat >> tests/test_field_syntax.py <<'EOF'\n\n\ndef test_range_matches_inclusive_bounds():\n    schedule = parse(\"0 1-5 * * *\")\n    assert schedule.matches(at(1, 0))\n    assert schedule.matches(at(5, 0))\n    assert schedule.matches(at(3, 0))\n    assert not schedule.matches(at(6, 0))\nEOF\n.venv/bin/pytest -q 2>&1 | tail -4",
+      "seconds": 0.59,
+      "failed": true,
+      "at": "2026-09-13T12:53:41.903Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/tdd\" && python3 - <<'PY'\nimport pathlib\np = pathlib.Path(\"cron.py\")\ns = p.read_text()\ns = s.replace('''def _term(text: str, low: int, high: int) -> set[int]:\n    if text == \"*\":\n        return set(range(low, high + 1))\n    return {int(text)}''', '''def _term(text: str, low: int, high: int) -> set[int]:\n    if text == \"*\":\n        return set(range(low, high + 1))\n    if \"-\" in text:\n        start, _, end = text.partition(\"-\")\n        return set(range(int(start), int(end) + 1))\n    return {int(text)}''')\np.write_text(s)\nPY\n.venv/bin/pytest -q 2>&1 | tail -3",
+      "seconds": 0.45,
+      "failed": false,
+      "at": "2026-09-13T12:53:47.019Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/tdd\" && cat >> tests/test_field_syntax.py <<'EOF'\n\n\ndef test_step_over_star_matches_every_nth_value_from_the_low_bound():\n    schedule = parse(\"*/15 * * * *\")\n    assert [m for m in range(60) if schedule.matches(at(0, m))] == [0, 15, 30, 45]\n\n\ndef test_step_over_range_starts_at_the_range_start():\n    schedule = parse(\"10-30/5 * * * *\")\n    assert [m for m in range(60) if schedule.matches(at(0, m))] == [10, 15, 20, 25, 30]\nEOF\n.venv/bin/pytest -q 2>&1 | tail -4",
+      "seconds": 0.45,
+      "failed": true,
+      "at": "2026-09-13T12:53:52.483Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/tdd\" && python3 - <<'PY'\nimport pathlib\np = pathlib.Path(\"cron.py\")\ns = p.read_text()\ns = s.replace('''def _term(text: str, low: int, high: int) -> set[int]:\n    if text == \"*\":''', '''def _term(text: str, low: int, high: int) -> set[int]:\n    if \"/\" in text:\n        base, _, step = text.partition(\"/\")\n        candidates = sorted(_term(base, low, high))\n        return set(candidates[:: int(step)])\n    if text == \"*\":''')\np.write_text(s)\nPY\n.venv/bin/pytest -q 2>&1 | tail -3",
+      "seconds": 0.51,
+      "failed": false,
+      "at": "2026-09-13T12:53:57.573Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/tdd\" && cat >> tests/test_field_syntax.py <<'EOF'\n\n\ndef test_month_and_weekday_names_are_accepted():\n    schedule = parse(\"0 0 * JAN-mar MON\")\n    assert schedule.matches(at(0, 0, day=4, month=3))  # Monday 2024-03-04\n    assert not schedule.matches(at(0, 0, day=5, month=3))  # Tuesday\n    assert not schedule.matches(at(0, 0, day=1, month=4))  # Monday 2024-04-01, wrong month\n\n\ndef test_saturday_name_maps_to_six():\n    schedule = parse(\"0 0 * * SAT\")\n    assert schedule.matches(at(0, 0, day=6, month=1))  # Saturday 2024-01-06\n    assert not schedule.matches(at(0, 0, day=7, month=1))  # Sunday\nEOF\n.venv/bin/pytest -q 2>&1 | tail -4",
+      "seconds": 0.54,
+      "failed": true,
+      "at": "2026-09-13T12:54:05.330Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/tdd\" && python3 - <<'PY'\nimport pathlib\np = pathlib.Path(\"cron.py\")\ns = p.read_text()\ns = s.replace('''def _field(text: str, low: int, high: int) -> frozenset[int]:\n    values: set[int] = set()\n    for term in text.split(\",\"):\n        values |= _term(term, low, high)\n    return frozenset(values)\n\n\ndef _term(text: str, low: int, high: int) -> set[int]:\n    if \"/\" in text:\n        base, _, step = text.partition(\"/\")\n        candidates = sorted(_term(base, low, high))\n        return set(candidates[:: int(step)])\n    if text == \"*\":\n        return set(range(low, high + 1))\n    if \"-\" in text:\n        start, _, end = text.partition(\"-\")\n        return set(range(int(start), int(end) + 1))\n    return {int(text)}''', '''MONTH_NAMES = {\n    name: number\n    for number, name in enumerate(\n        \"JAN FEB MAR APR MAY JUN JUL AUG SEP OCT NOV DEC\".split(), start=1\n    )\n}\nWEEKDAY_NAMES = {\n    name: number\n    for number, name in enumerate(\"SUN MON TUE WED THU FRI SAT\".split())\n}\n\n\ndef _field(text: str, low: int, high: int, names: dict[str, int] = {}) -> frozenset[int]:\n    values: set[int] = set()\n    for term in text.split(\",\"):\n        values |= _term(term, low, high, names)\n    return frozenset(values)\n\n\ndef _term(text: str, low: int, high: int, names: dict[str, int]) -> set[int]:\n    if \"/\" in text:\n        base, _, step = text.partition(\"/\")\n        candidates = sorted(_term(base, low, high, names))\n        return set(candidates[:: int(step)])\n    if text == \"*\":\n        return set(range(low, high + 1))\n    if \"-\" in text:\n        start, _, end = text.partition(\"-\")\n        return set(range(_value(start, names), _value(end, names) + 1))\n    return {_value(text, names)}\n\n\ndef _value(text: str, names: dict[str, int]) -> int:\n    upper = text.upper()\n    if upper in names:\n        return names[upper]\n    return int(text)''')\ns = s.replace('''        months=_field(month, 1, 12),\n        days_of_week=_field(dow, 0, 6),''', '''        months=_field(month, 1, 12, MONTH_NAMES),\n        days_of_week=_field(dow, 0, 6, WEEKDAY_NAMES),''')\np.write_text(s)\nPY\n.venv/bin/pytest -q 2>&1 | tail -3",
+      "seconds": 0.61,
+      "failed": false,
+      "at": "2026-09-13T12:54:18.147Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/tdd\" && cat >> tests/test_field_syntax.py <<'EOF'\n\n\ndef test_weekday_seven_is_also_sunday():\n    schedule = parse(\"0 0 * * 7\")\n    assert schedule.matches(at(0, 0, day=7, month=1))  # Sunday 2024-01-07\n    assert not schedule.matches(at(0, 0, day=6, month=1))  # Saturday\nEOF\n.venv/bin/pytest -q 2>&1 | tail -4",
+      "seconds": 0.56,
+      "failed": true,
+      "at": "2026-09-13T12:54:23.332Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/tdd\" && python3 - <<'PY'\nimport pathlib\np = pathlib.Path(\"cron.py\")\ns = p.read_text()\ns = s.replace('''        days_of_week=_field(dow, 0, 6, WEEKDAY_NAMES),''',\n'''        days_of_week=frozenset(\n            day % 7 for day in _field(dow, 0, 6, WEEKDAY_NAMES) | _field(dow, 7, 7, WEEKDAY_NAMES)\n        ),''')\np.write_text(s)\nPY\n.venv/bin/pytest -q 2>&1 | tail -5",
+      "seconds": 0.6,
+      "failed": false,
+      "at": "2026-09-13T12:54:28.472Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/tdd\" && python3 - <<'PY'\nimport pathlib\np = pathlib.Path(\"cron.py\")\ns = p.read_text()\ns = s.replace('''        days_of_week=frozenset(\n            day % 7 for day in _field(dow, 0, 6, WEEKDAY_NAMES) | _field(dow, 7, 7, WEEKDAY_NAMES)\n        ),''', '''        # 0 and 7 both mean Sunday.\n        days_of_week=frozenset(day % 7 for day in _field(dow, 0, 7, WEEKDAY_NAMES)),''')\np.write_text(s)\nPY\n.venv/bin/pytest -q 2>&1 | tail -3",
+      "seconds": 0.43,
+      "failed": false,
+      "at": "2026-09-13T12:54:36.654Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/tdd\" && cat > tests/test_macros.py <<'EOF'\nfrom datetime import datetime, timezone\n\nfrom cron import parse\n\n\ndef utc(month, day, hour, minute):\n    return datetime(2024, month, day, hour, minute, tzinfo=timezone.utc)\n\n\ndef test_hourly_runs_at_the_top_of_every_hour():\n    schedule = parse(\"@hourly\")\n    assert schedule.matches(utc(6, 10, 13, 0))\n    assert not schedule.matches(utc(6, 10, 13, 1))\n\n\ndef test_daily_runs_at_midnight():\n    schedule = parse(\"@daily\")\n    assert schedule.matches(utc(6, 10, 0, 0))\n    assert not schedule.matches(utc(6, 10, 1, 0))\n\n\ndef test_weekly_runs_sunday_midnight():\n    schedule = parse(\"@weekly\")\n    assert schedule.matches(utc(12, 1, 0, 0))  # Sunday\n    assert not schedule.matches(utc(12, 2, 0, 0))  # Monday\n\n\ndef test_monthly_runs_on_the_first():\n    schedule = parse(\"@monthly\")\n    assert schedule.matches(utc(6, 1, 0, 0))\n    assert not schedule.matches(utc(6, 2, 0, 0))\n\n\ndef test_yearly_runs_on_january_first():\n    schedule = parse(\"@yearly\")\n    assert schedule.matches(utc(1, 1, 0, 0))\n    assert not schedule.matches(utc(2, 1, 0, 0))\nEOF\n.venv/bin/pytest -q 2>&1 | tail -3",
+      "seconds": 0.53,
+      "failed": true,
+      "at": "2026-09-13T12:54:44.377Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/tdd\" && python3 - <<'PY'\nimport pathlib\np = pathlib.Path(\"cron.py\")\ns = p.read_text()\ns = s.replace('''def parse(expression: str) -> Schedule:\n    minute, hour, dom, month, dow = expression.split()''', '''MACROS = {\n    \"@hourly\": \"0 * * * *\",\n    \"@daily\": \"0 0 * * *\",\n    \"@midnight\": \"0 0 * * *\",\n    \"@weekly\": \"0 0 * * 0\",\n    \"@monthly\": \"0 0 1 * *\",\n    \"@yearly\": \"0 0 1 1 *\",\n    \"@annually\": \"0 0 1 1 *\",\n}\n\n\ndef parse(expression: str) -> Schedule:\n    expression = MACROS.get(expression.strip().lower(), expression)\n    minute, hour, dom, month, dow = expression.split()''')\np.write_text(s)\nPY\n.venv/bin/pytest -q 2>&1 | tail -3",
+      "seconds": 0.42,
+      "failed": false,
+      "at": "2026-09-13T12:54:50.685Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/tdd\" && cat > tests/test_errors.py <<'EOF'\nimport pytest\n\nfrom cron import CronError, parse\n\n\ndef test_out_of_range_minute_names_the_minute_field():\n    with pytest.raises(CronError) as raised:\n        parse(\"99 * * * *\")\n    assert \"minute\" in str(raised.value)\n    assert \"99\" in str(raised.value)\nEOF\n.venv/bin/pytest -q tests/test_errors.py 2>&1 | tail -4",
+      "seconds": 0.48,
+      "failed": false,
+      "at": "2026-09-13T12:54:58.008Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/tdd\" && python3 - <<'PY'\nimport pathlib\np = pathlib.Path(\"cron.py\")\ns = p.read_text()\ns = s.replace('''from dataclasses import dataclass''', '''from dataclasses import dataclass\n\n\nclass CronError(ValueError):\n    \"\"\"A cron expression that cannot be parsed.\"\"\"''')\ns = s.replace('''def _field(text: str, low: int, high: int, names: dict[str, int] = {}) -> frozenset[int]:\n    values: set[int] = set()\n    for term in text.split(\",\"):\n        values |= _term(term, low, high, names)\n    return frozenset(values)''', '''def _field(\n    name: str, text: str, low: int, high: int, names: dict[str, int] = {}\n) -> frozenset[int]:\n    values: set[int] = set()\n    for term in text.split(\",\"):\n        values |= _term(term, low, high, names)\n    for value in values:\n        if not low <= value <= high:\n            raise CronError(\n                f\"bad {name} field {text!r}: {value} is out of range {low}-{high}\"\n            )\n    return frozenset(values)''')\ns = s.replace('''        minutes=_field(minute, 0, 59),\n        hours=_field(hour, 0, 23),\n        days_of_month=_field(dom, 1, 31),\n        months=_field(month, 1, 12, MONTH_NAMES),''','''        minutes=_field(\"minute\", minute, 0, 59),\n        hours=_field(\"hour\", hour, 0, 23),\n        days_of_month=_field(\"day-of-month\", dom, 1, 31),\n        months=_field(\"month\", month, 1, 12, MONTH_NAMES),''')\ns = s.replace('''day % 7 for day in _field(dow, 0, 7, WEEKDAY_NAMES)''','''day % 7 for day in _field(\"day-of-week\", dow, 0, 7, WEEKDAY_NAMES)''')\np.write_text(s)\nPY\n.venv/bin/pytest -q 2>&1 | tail -3",
+      "seconds": 0.44,
+      "failed": false,
+      "at": "2026-09-13T12:55:06.737Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/tdd\" && cat >> tests/test_errors.py <<'EOF'\n\n\ndef test_unknown_word_names_the_field_it_appeared_in():\n    with pytest.raises(CronError) as raised:\n        parse(\"* * * FOO *\")\n    assert \"month\" in str(raised.value)\n    assert \"FOO\" in str(raised.value)\n\n\ndef test_wrong_number_of_fields_is_reported():\n    with pytest.raises(CronError) as raised:\n        parse(\"* * *\")\n    assert \"5 fields\" in str(raised.value)\n\n\ndef test_unknown_macro_is_reported():\n    with pytest.raises(CronError) as raised:\n        parse(\"@fortnightly\")\n    assert \"@fortnightly\" in str(raised.value)\nEOF\n.venv/bin/pytest -q tests/test_errors.py 2>&1 | tail -5",
+      "seconds": 0.54,
+      "failed": true,
+      "at": "2026-09-13T12:55:13.534Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/tdd\" && python3 - <<'PY'\nimport pathlib\np = pathlib.Path(\"cron.py\")\ns = p.read_text()\ns = s.replace('''    values: set[int] = set()\n    for term in text.split(\",\"):\n        values |= _term(term, low, high, names)''', '''    values: set[int] = set()\n    try:\n        for term in text.split(\",\"):\n            values |= _term(term, low, high, names)\n    except ValueError:\n        raise CronError(f\"bad {name} field {text!r}\") from None''')\ns = s.replace('''    expression = MACROS.get(expression.strip().lower(), expression)\n    minute, hour, dom, month, dow = expression.split()''', '''    expression = expression.strip()\n    if expression.startswith(\"@\"):\n        if expression.lower() not in MACROS:\n            raise CronError(\n                f\"unknown macro {expression!r}: expected one of \"\n                + \" \".join(sorted(MACROS))\n            )\n        expression = MACROS[expression.lower()]\n    fields = expression.split()\n    if len(fields) != 5:\n        raise CronError(\n            f\"expected 5 fields (minute hour day-of-month month day-of-week), \"\n            f\"got {len(fields)} in {expression!r}\"\n        )\n    minute, hour, dom, month, dow = fields''')\np.write_text(s)\nPY\n.venv/bin/pytest -q 2>&1 | tail -3",
+      "seconds": 0.45,
+      "failed": false,
+      "at": "2026-09-13T12:55:21.595Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/tdd\" && cat > tests/test_next_runs.py <<'EOF'\nfrom datetime import datetime, timezone\n\nfrom cron import parse\n\n\ndef utc(year, month, day, hour, minute):\n    return datetime(year, month, day, hour, minute, tzinfo=timezone.utc)\n\n\ndef test_next_runs_lists_the_following_occurrences():\n    schedule = parse(\"*/15 * * * *\")\n    assert schedule.next_runs(utc(2024, 1, 1, 0, 7), 3) == [\n        utc(2024, 1, 1, 0, 15),\n        utc(2024, 1, 1, 0, 30),\n        utc(2024, 1, 1, 0, 45),\n    ]\nEOF\n.venv/bin/pytest -q tests/test_next_runs.py 2>&1 | tail -4",
+      "seconds": 0.51,
+      "failed": true,
+      "at": "2026-09-13T12:55:34.861Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/tdd\" && python3 - <<'PY'\nimport pathlib\np = pathlib.Path(\"cron.py\")\ns = p.read_text()\ns = s.replace('''from dataclasses import dataclass''', '''from dataclasses import dataclass\nfrom datetime import datetime, timedelta''')\ns = s.replace('''    def _day_matches(self, when) -> bool:''', '''    def next_runs(self, after: datetime, count: int) -> list[datetime]:\n        \"\"\"The next `count` run times strictly after `after`, in its zone.\"\"\"\n        runs: list[datetime] = []\n        when = after.replace(second=0, microsecond=0) + timedelta(minutes=1)\n        while len(runs) < count:\n            if self.matches(when):\n                runs.append(when)\n            when += timedelta(minutes=1)\n        return runs\n\n    def _day_matches(self, when) -> bool:''')\np.write_text(s)\nPY\n.venv/bin/pytest -q 2>&1 | tail -3",
+      "seconds": 0.44,
+      "failed": false,
+      "at": "2026-09-13T12:55:44.883Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/tdd\" && cat > tests/test_dst.py <<'EOF'\nfrom datetime import datetime, timezone\nfrom zoneinfo import ZoneInfo\n\nfrom cron import parse\n\nNEW_YORK = ZoneInfo(\"America/New_York\")\n\n\ndef in_utc(runs):\n    return [run.astimezone(timezone.utc).isoformat() for run in runs]\n\n\ndef test_run_in_a_skipped_local_hour_happens_when_the_clock_jumps():\n    # 2024-03-10 in New York: 02:00 never happens, the clock jumps to 03:00.\n    schedule = parse(\"30 2 * * *\")\n    runs = schedule.next_runs(datetime(2024, 3, 9, 12, 0, tzinfo=NEW_YORK), 2)\n    assert in_utc(runs) == [\n        \"2024-03-10T07:00:00+00:00\",  # 03:00 EDT, the moment the gap ends\n        \"2024-03-11T06:30:00+00:00\",  # 02:30 EDT, back to normal\n    ]\n\n\ndef test_several_runs_inside_the_gap_collapse_to_one():\n    schedule = parse(\"0,30 2 * * *\")\n    runs = schedule.next_runs(datetime(2024, 3, 9, 12, 0, tzinfo=NEW_YORK), 2)\n    assert in_utc(runs) == [\n        \"2024-03-10T07:00:00+00:00\",\n        \"2024-03-11T06:00:00+00:00\",\n    ]\nEOF\n.venv/bin/pytest -q tests/test_dst.py 2>&1 | tail -4",
+      "seconds": 0.48,
+      "failed": true,
+      "at": "2026-09-13T12:58:15.519Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/tdd\" && python3 - <<'PY'\nimport pathlib\np = pathlib.Path(\"cron.py\")\ns = p.read_text()\ns = s.replace(\"from datetime import date, datetime, time, timedelta\",\n              \"from datetime import date, datetime, time, timedelta, timezone\")\ns = s.replace('''        start = after.replace(second=0, microsecond=0) + timedelta(minutes=1)\n        last_day = (start + timedelta(days=HORIZON_DAYS)).date()\n        runs: list[datetime] = []\n        day = start.date()\n        while day <= last_day:\n            if self._date_matches(day):\n                for hour in sorted(self.hours):\n                    for minute in sorted(self.minutes):\n                        when = datetime.combine(\n                            day, time(hour, minute), tzinfo=start.tzinfo\n                        )\n                        if when < start:\n                            continue\n                        runs.append(when)\n                        if len(runs) == count:\n                            return runs\n            day += timedelta(days=1)\n        return runs''', '''        start = after.replace(second=0, microsecond=0) + timedelta(minutes=1)\n        last_day = (start + timedelta(days=HORIZON_DAYS)).date()\n        runs: list[datetime] = []\n        day = start.date()\n        while day <= last_day:\n            if self._date_matches(day):\n                for wall in self._wall_times(day):\n                    when = _resolve(wall, start.tzinfo)\n                    # A local hour the clock skips maps several wall times onto\n                    # the same instant; report that instant only once.\n                    if when < start or (runs and when <= runs[-1]):\n                        continue\n                    runs.append(when)\n                    if len(runs) == count:\n                        return runs\n            day += timedelta(days=1)\n        return runs\n\n    def _wall_times(self, day: date):\n        for hour in sorted(self.hours):\n            for minute in sorted(self.minutes):\n                yield datetime.combine(day, time(hour, minute))''')\ns = s.replace('''HORIZON_DAYS = 366 * 8''', '''HORIZON_DAYS = 366 * 8\n\n\ndef _resolve(wall: datetime, tz) -> datetime:\n    \"\"\"The instant a local wall-clock time happens at, in zone `tz`.\"\"\"\n    when = wall.replace(tzinfo=tz)\n    if when.astimezone(timezone.utc).astimezone(tz).replace(tzinfo=None) == wall:\n        return when  # exists; when ambiguous this is the first of the two\n    return _gap_end(when, tz)\n\n\ndef _gap_end(when: datetime, tz) -> datetime:\n    \"\"\"The instant the clock jumps to, for a wall time that never happens.\"\"\"\n    after_offset = when.replace(fold=1).utcoffset()\n    instant = when.replace(fold=1).astimezone(timezone.utc)  # before the jump\n    while instant.astimezone(tz).utcoffset() != after_offset:\n        instant += timedelta(minutes=1)\n    return instant.astimezone(tz)''')\np.write_text(s)\nPY\n.venv/bin/pytest -q 2>&1 | tail -4",
+      "seconds": 0.55,
+      "failed": false,
+      "at": "2026-09-13T12:58:27.927Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/tdd\" && cat >> tests/test_dst.py <<'EOF'\n\n\ndef test_repeated_local_hour_runs_once_not_twice():\n    # 2024-11-03 in New York: 01:00-02:00 happens twice, EDT then EST.\n    schedule = parse(\"30 1 * * *\")\n    runs = schedule.next_runs(datetime(2024, 11, 2, 12, 0, tzinfo=NEW_YORK), 2)\n    assert in_utc(runs) == [\n        \"2024-11-03T05:30:00+00:00\",  # 01:30 EDT, the first pass only\n        \"2024-11-04T06:30:00+00:00\",  # 01:30 EST\n    ]\n\n\ndef test_hourly_schedule_over_a_fall_back_has_no_duplicate_instant():\n    schedule = parse(\"0 * * * *\")\n    runs = schedule.next_runs(datetime(2024, 11, 3, 0, 30, tzinfo=NEW_YORK), 4)\n    assert in_utc(runs) == [\n        \"2024-11-03T05:00:00+00:00\",  # 01:00 EDT\n        \"2024-11-03T07:00:00+00:00\",  # 02:00 EST\n        \"2024-11-03T08:00:00+00:00\",  # 03:00 EST\n        \"2024-11-03T09:00:00+00:00\",  # 04:00 EST\n    ]\nEOF\n.venv/bin/pytest -q tests/test_dst.py 2>&1 | tail -4",
+      "seconds": 0.4,
+      "failed": false,
+      "at": "2026-09-13T12:58:38.460Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/tdd\" && cat > tests/test_describe.py <<'EOF'\nfrom cron import describe\n\n\ndef test_every_minute():\n    assert describe(\"* * * * *\") == \"every minute\"\n\n\ndef test_daily_midnight():\n    assert describe(\"0 0 * * *\") == \"at 00:00 every day\"\nEOF\n.venv/bin/pytest -q tests/test_describe.py 2>&1 | tail -3",
+      "seconds": 0.72,
+      "failed": false,
+      "at": "2026-09-13T12:58:56.467Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/tdd\" && cat >> cron.py <<'EOF'\n\n\ndef describe(expression: str) -> str:\n    \"\"\"One plain-English line for a cron expression.\"\"\"\n    schedule = parse(expression)\n    if len(schedule.minutes) == 60 and len(schedule.hours) == 24:\n        return \"every minute\"\n    hour = next(iter(schedule.hours))\n    minute = next(iter(schedule.minutes))\n    return f\"at {hour:02d}:{minute:02d} every day\"\nEOF\n.venv/bin/pytest -q 2>&1 | tail -3",
+      "seconds": 0.49,
+      "failed": false,
+      "at": "2026-09-13T12:59:01.527Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/tdd\" && cat >> tests/test_describe.py <<'EOF'\n\n\ndef test_step_minutes():\n    assert describe(\"*/15 * * * *\") == \"every 15 minutes\"\n\n\ndef test_weekday_range():\n    assert describe(\"30 2 * * 1-5\") == \"at 02:30 on Monday, Tuesday, Wednesday, Thursday, Friday\"\nEOF\n.venv/bin/pytest -q tests/test_describe.py 2>&1 | tail -4",
+      "seconds": 0.47,
+      "failed": true,
+      "at": "2026-09-13T12:59:06.157Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/tdd\" && python3 - <<'PY'\nimport pathlib\np = pathlib.Path(\"cron.py\")\ns = p.read_text()\ns = s.replace('''def describe(expression: str) -> str:\n    \"\"\"One plain-English line for a cron expression.\"\"\"\n    schedule = parse(expression)\n    if len(schedule.minutes) == 60 and len(schedule.hours) == 24:\n        return \"every minute\"\n    hour = next(iter(schedule.hours))\n    minute = next(iter(schedule.minutes))\n    return f\"at {hour:02d}:{minute:02d} every day\"''', '''WEEKDAY_LABELS = \"Sunday Monday Tuesday Wednesday Thursday Friday Saturday\".split()\n\n\ndef describe(expression: str) -> str:\n    \"\"\"One plain-English line for a cron expression.\"\"\"\n    schedule = parse(expression)\n    return f\"{_time_phrase(schedule)} {_day_phrase(schedule)}\".strip()\n\n\ndef _time_phrase(schedule: Schedule) -> str:\n    if len(schedule.hours) == 24:\n        if len(schedule.minutes) == 60:\n            return \"every minute\"\n        step = _step_of(sorted(schedule.minutes), 60)\n        if step:\n            return f\"every {step} minutes\"\n    hour = next(iter(schedule.hours))\n    minute = next(iter(schedule.minutes))\n    return f\"at {hour:02d}:{minute:02d}\"\n\n\ndef _day_phrase(schedule: Schedule) -> str:\n    if not schedule.day_of_week_restricted and not schedule.day_of_month_restricted:\n        return \"every day\" if len(schedule.hours) < 24 else \"\"\n    return \"on \" + \", \".join(WEEKDAY_LABELS[day] for day in sorted(schedule.days_of_week))\n\n\ndef _step_of(values: list[int], wrap: int) -> int | None:\n    \"\"\"The N of a `*/N` field, if the values are exactly every Nth from 0.\"\"\"\n    if len(values) < 2 or values[0] != 0:\n        return None\n    step = values[1]\n    return step if values == list(range(0, wrap, step)) else None''')\np.write_text(s)\nPY\n.venv/bin/pytest -q 2>&1 | tail -4",
+      "seconds": 0.51,
+      "failed": false,
+      "at": "2026-09-13T12:59:15.933Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/tdd\" && cat >> tests/test_describe.py <<'EOF'\n\n\ndef test_day_of_month_and_month():\n    assert describe(\"0 12 1,22 JAN *\") == \"at 12:00 on the 1st and 22nd of January\"\n\n\ndef test_both_day_fields_restricted_reads_as_either():\n    assert describe(\"0 0 13 * 5\") == \"at 00:00 on the 13th or on Friday\"\n\n\ndef test_macro_is_described_like_its_expansion():\n    assert describe(\"@weekly\") == \"at 00:00 on Sunday\"\nEOF\n.venv/bin/pytest -q tests/test_describe.py 2>&1 | tail -5",
+      "seconds": 0.46,
+      "failed": true,
+      "at": "2026-09-13T12:59:21.984Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/tdd\" && python3 - <<'PY'\nimport pathlib\np = pathlib.Path(\"cron.py\")\ns = p.read_text()\ns = s.replace('''WEEKDAY_LABELS = \"Sunday Monday Tuesday Wednesday Thursday Friday Saturday\".split()''',\n'''WEEKDAY_LABELS = \"Sunday Monday Tuesday Wednesday Thursday Friday Saturday\".split()\nMONTH_LABELS = (\n    \"January February March April May June \"\n    \"July August September October November December\"\n).split()''')\ns = s.replace('''def _day_phrase(schedule: Schedule) -> str:\n    if not schedule.day_of_week_restricted and not schedule.day_of_month_restricted:\n        return \"every day\" if len(schedule.hours) < 24 else \"\"\n    return \"on \" + \", \".join(WEEKDAY_LABELS[day] for day in sorted(schedule.days_of_week))''',\n'''def _day_phrase(schedule: Schedule) -> str:\n    parts = []\n    if schedule.day_of_month_restricted:\n        parts.append(\n            \"on the \" + _join(_ordinal(day) for day in sorted(schedule.days_of_month))\n        )\n    if schedule.day_of_week_restricted:\n        parts.append(\n            \"on \" + _join(WEEKDAY_LABELS[day] for day in sorted(schedule.days_of_week))\n        )\n    day_phrase = \" or \".join(parts)\n    if not day_phrase:\n        day_phrase = \"every day\" if len(schedule.hours) < 24 else \"\"\n    if len(schedule.months) < 12:\n        month_phrase = \"of \" + _join(\n            MONTH_LABELS[month - 1] for month in sorted(schedule.months)\n        )\n        return f\"{day_phrase} {month_phrase}\".strip()\n    return day_phrase\n\n\ndef _join(items) -> str:\n    items = list(items)\n    if len(items) == 1:\n        return items[0]\n    return \", \".join(items[:-1]) + \" and \" + items[-1]\n\n\ndef _ordinal(number: int) -> str:\n    if number % 100 not in (11, 12, 13):\n        suffix = {1: \"st\", 2: \"nd\", 3: \"rd\"}.get(number % 10, \"th\")\n    else:\n        suffix = \"th\"\n    return f\"{number}{suffix}\"''')\np.write_text(s)\nPY\n.venv/bin/pytest -q 2>&1 | tail -4",
+      "seconds": 0.55,
+      "failed": true,
+      "at": "2026-09-13T12:59:32.599Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/tdd\" && python3 - <<'PY'\nimport pathlib\np = pathlib.Path(\"tests/test_describe.py\")\ns = p.read_text().replace(\n '\"at 02:30 on Monday, Tuesday, Wednesday, Thursday, Friday\"',\n '\"at 02:30 on Monday, Tuesday, Wednesday, Thursday and Friday\"')\np.write_text(s)\nPY\n.venv/bin/pytest -q 2>&1 | tail -3",
+      "seconds": 0.43,
+      "failed": false,
+      "at": "2026-09-13T12:59:45.568Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/tdd\" && cat > tests/test_cli.py <<'EOF'\nimport pathlib\nimport subprocess\nimport sys\n\nROOT = pathlib.Path(__file__).resolve().parent.parent\n\n\ndef run(*args):\n    return subprocess.run(\n        [sys.executable, \"-m\", \"cron\", *args],\n        capture_output=True,\n        text=True,\n        cwd=ROOT,\n    )\n\n\ndef test_describe_prints_one_line():\n    result = run(\"describe\", \"0 0 * * *\")\n    assert result.returncode == 0\n    assert result.stdout == \"at 00:00 every day\\n\"\nEOF\n.venv/bin/pytest -q tests/test_cli.py 2>&1 | tail -4",
+      "seconds": 0.47,
+      "failed": true,
+      "at": "2026-09-13T12:59:56.167Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/tdd\" && cat >> cron.py <<'EOF'\n\n\ndef main(argv: list[str] | None = None) -> int:\n    parser = argparse.ArgumentParser(prog=\"cron\", description=__doc__)\n    commands = parser.add_subparsers(dest=\"command\", required=True)\n\n    describe_command = commands.add_parser(\"describe\", help=\"explain an expression\")\n    describe_command.add_argument(\"expression\")\n\n    args = parser.parse_args(argv)\n    print(describe(args.expression))\n    return 0\n\n\nif __name__ == \"__main__\":\n    raise SystemExit(main())\nEOF\npython3 - <<'PY'\nimport pathlib\np = pathlib.Path(\"cron.py\")\ns = p.read_text().replace('\"\"\"Parse cron expressions and project future run times.\"\"\"\\n\\nfrom dataclasses',\n '\"\"\"Parse cron expressions and project future run times.\"\"\"\\n\\nimport argparse\\nfrom dataclasses')\np.write_text(s)\nPY\n.venv/bin/pytest -q 2>&1 | tail -3",
+      "seconds": 0.5,
+      "failed": false,
+      "at": "2026-09-13T13:00:03.589Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/tdd\" && cat >> tests/test_cli.py <<'EOF'\n\n\ndef test_next_prints_the_requested_number_of_run_times():\n    result = run(\"next\", \"*/15 * * * *\", \"--count\", \"2\", \"--from\", \"2024-01-01T00:07:00Z\")\n    assert result.returncode == 0\n    assert result.stdout.splitlines() == [\n        \"2024-01-01T00:15:00+00:00\",\n        \"2024-01-01T00:30:00+00:00\",\n    ]\nEOF\n.venv/bin/pytest -q tests/test_cli.py 2>&1 | tail -4",
+      "seconds": 0.49,
+      "failed": true,
+      "at": "2026-09-13T13:00:09.660Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/tdd\" && python3 - <<'PY'\nimport pathlib\np = pathlib.Path(\"cron.py\")\ns = p.read_text()\ns = s.replace('''    describe_command = commands.add_parser(\"describe\", help=\"explain an expression\")\n    describe_command.add_argument(\"expression\")\n\n    args = parser.parse_args(argv)\n    print(describe(args.expression))\n    return 0''', '''    next_command = commands.add_parser(\"next\", help=\"the next run times\")\n    next_command.add_argument(\"expression\")\n    next_command.add_argument(\"--count\", type=int, default=1)\n    next_command.add_argument(\"--from\", dest=\"start\", default=None)\n\n    describe_command = commands.add_parser(\"describe\", help=\"explain an expression\")\n    describe_command.add_argument(\"expression\")\n\n    args = parser.parse_args(argv)\n    if args.command == \"describe\":\n        print(describe(args.expression))\n        return 0\n\n    start = datetime.fromisoformat(args.start) if args.start else datetime.now(timezone.utc)\n    for run in parse(args.expression).next_runs(start, args.count):\n        print(run.isoformat())\n    return 0''')\np.write_text(s)\nPY\n.venv/bin/pytest -q 2>&1 | tail -3",
+      "seconds": 0.51,
+      "failed": false,
+      "at": "2026-09-13T13:00:16.373Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/tdd\" && cat >> tests/test_cli.py <<'EOF'\n\n\ndef test_next_computes_in_the_given_zone():\n    result = run(\n        \"next\", \"0 3 * * *\", \"--count\", \"1\",\n        \"--from\", \"2024-06-01T00:00:00Z\", \"--tz\", \"Asia/Tokyo\",\n    )\n    assert result.returncode == 0\n    # 2024-06-01T00:00Z is 09:00 in Tokyo, so the next 03:00 is the following day.\n    assert result.stdout.strip() == \"2024-06-02T03:00:00+09:00\"\n\n\ndef test_from_defaults_to_now_in_the_given_zone():\n    result = run(\"next\", \"* * * * *\", \"--tz\", \"Asia/Tokyo\")\n    assert result.returncode == 0\n    assert result.stdout.strip().endswith(\"+09:00\")\nEOF\n.venv/bin/pytest -q tests/test_cli.py 2>&1 | tail -4",
+      "seconds": 0.59,
+      "failed": true,
+      "at": "2026-09-13T13:00:23.028Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/tdd\" && python3 - <<'PY'\nimport pathlib\np = pathlib.Path(\"cron.py\")\ns = p.read_text()\ns = s.replace('''    next_command.add_argument(\"--from\", dest=\"start\", default=None)''',\n'''    next_command.add_argument(\"--from\", dest=\"start\", default=None)\n    next_command.add_argument(\"--tz\", default=\"UTC\", help=\"zone to compute in\")''')\ns = s.replace('''    start = datetime.fromisoformat(args.start) if args.start else datetime.now(timezone.utc)\n    for run in parse(args.expression).next_runs(start, args.count):''',\n'''    zone = ZoneInfo(args.tz)\n    start = datetime.fromisoformat(args.start) if args.start else datetime.now(timezone.utc)\n    if start.tzinfo is None:\n        start = start.replace(tzinfo=zone)\n    for run in parse(args.expression).next_runs(start.astimezone(zone), args.count):''')\ns = s.replace(\"import argparse\\nfrom dataclasses\", \"import argparse\\nfrom dataclasses\")\ns = s.replace(\"from datetime import date, datetime, time, timedelta, timezone\",\n              \"from datetime import date, datetime, time, timedelta, timezone\\nfrom zoneinfo import ZoneInfo\")\np.write_text(s)\nPY\n.venv/bin/pytest -q 2>&1 | tail -3",
+      "seconds": 0.61,
+      "failed": false,
+      "at": "2026-09-13T13:00:31.289Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/tdd\" && cat >> tests/test_cli.py <<'EOF'\n\n\ndef test_match_exits_zero_when_the_time_would_run():\n    assert run(\"match\", \"0 3 * * *\", \"2024-06-01T03:00:00Z\").returncode == 0\n\n\ndef test_match_exits_one_when_the_time_would_not_run():\n    assert run(\"match\", \"0 3 * * *\", \"2024-06-01T03:01:00Z\").returncode == 1\n\n\ndef test_match_reads_the_time_in_the_given_zone():\n    # 18:00Z is 03:00 the next day in Tokyo.\n    assert run(\"match\", \"0 3 * * *\", \"2024-06-01T18:00:00Z\", \"--tz\", \"Asia/Tokyo\").returncode == 0\nEOF\n.venv/bin/pytest -q tests/test_cli.py 2>&1 | tail -5",
+      "seconds": 0.78,
+      "failed": true,
+      "at": "2026-09-13T13:00:37.674Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/tdd\" && python3 - <<'PY'\nimport pathlib\np = pathlib.Path(\"cron.py\")\ns = p.read_text()\ns = s.replace('''    describe_command = commands.add_parser(\"describe\", help=\"explain an expression\")\n    describe_command.add_argument(\"expression\")\n\n    args = parser.parse_args(argv)''', '''    describe_command = commands.add_parser(\"describe\", help=\"explain an expression\")\n    describe_command.add_argument(\"expression\")\n\n    match_command = commands.add_parser(\"match\", help=\"test one time against a schedule\")\n    match_command.add_argument(\"expression\")\n    match_command.add_argument(\"when\")\n    match_command.add_argument(\"--tz\", default=\"UTC\", help=\"zone to compute in\")\n\n    args = parser.parse_args(argv)''')\ns = s.replace('''    zone = ZoneInfo(args.tz)\n    start''', '''    zone = ZoneInfo(args.tz)\n    if args.command == \"match\":\n        when = datetime.fromisoformat(args.when)\n        if when.tzinfo is None:\n            when = when.replace(tzinfo=zone)\n        return 0 if parse(args.expression).matches(when.astimezone(zone)) else 1\n\n    start''')\np.write_text(s)\nPY\n.venv/bin/pytest -q 2>&1 | tail -3",
+      "seconds": 0.83,
+      "failed": false,
+      "at": "2026-09-13T13:00:46.918Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/tdd\" && cat >> tests/test_cli.py <<'EOF'\n\n\ndef test_malformed_expression_reports_the_bad_field_without_a_traceback():\n    result = run(\"next\", \"0 99 * * *\", \"--count\", \"1\")\n    assert result.returncode == 2\n    assert \"Traceback\" not in result.stderr\n    assert \"hour\" in result.stderr\n    assert \"99\" in result.stderr\n    assert result.stdout == \"\"\n\n\ndef test_unknown_timezone_is_reported_without_a_traceback():\n    result = run(\"next\", \"* * * * *\", \"--tz\", \"Mars/Olympus\")\n    assert result.returncode == 2\n    assert \"Traceback\" not in result.stderr\n    assert \"Mars/Olympus\" in result.stderr\n\n\ndef test_unparseable_timestamp_is_reported_without_a_traceback():\n    result = run(\"match\", \"* * * * *\", \"yesterday\")\n    assert result.returncode == 2\n    assert \"Traceback\" not in result.stderr\n    assert \"yesterday\" in result.stderr\nEOF\n.venv/bin/pytest -q tests/test_cli.py 2>&1 | tail -5",
+      "seconds": 0.88,
+      "failed": true,
+      "at": "2026-09-13T13:00:57.139Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/tdd\" && python3 - <<'PY'\nimport pathlib\np = pathlib.Path(\"cron.py\")\ns = p.read_text()\ns = s.replace('''def main(argv: list[str] | None = None) -> int:\n    parser''', '''def main(argv: list[str] | None = None) -> int:\n    try:\n        return _run(argv)\n    except (CronError, ZoneInfoNotFoundError) as error:\n        print(f\"cron: {error}\", file=sys.stderr)\n        return 2\n    except ValueError as error:  # e.g. an unparseable timestamp\n        print(f\"cron: {error}\", file=sys.stderr)\n        return 2\n\n\ndef _run(argv: list[str] | None) -> int:\n    parser''')\ns = s.replace(\"import argparse\\nfrom dataclasses\", \"import argparse\\nimport sys\\nfrom dataclasses\")\ns = s.replace(\"from zoneinfo import ZoneInfo\", \"from zoneinfo import ZoneInfo, ZoneInfoNotFoundError\")\ns = s.replace('''    zone = ZoneInfo(args.tz)''', '''    try:\n        zone = ZoneInfo(args.tz)\n    except (ZoneInfoNotFoundError, ValueError):\n        raise CronError(f\"unknown time zone {args.tz!r}\") from None''')\ns = s.replace('''    if args.command == \"match\":\n        when = datetime.fromisoformat(args.when)''', '''    if args.command == \"match\":\n        when = _timestamp(args.when)''')\ns = s.replace('''    start = datetime.fromisoformat(args.start) if args.start else datetime.now(timezone.utc)''',\n'''    start = _timestamp(args.start) if args.start else datetime.now(timezone.utc)''')\ns = s.replace('''def main(argv''', '''def _timestamp(text: str) -> datetime:\n    try:\n        return datetime.fromisoformat(text.replace(\"Z\", \"+00:00\"))\n    except ValueError:\n        raise CronError(f\"not an ISO 8601 timestamp: {text!r}\") from None\n\n\ndef main(argv''')\np.write_text(s)\nPY\n.venv/bin/pytest -q 2>&1 | tail -4",
+      "seconds": 0.94,
+      "failed": false,
+      "at": "2026-09-13T13:01:07.202Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/tdd\" && cat >> tests/test_cli.py <<'EOF'\n\n\ndef test_schedule_that_never_runs_is_reported_not_silent():\n    result = run(\"next\", \"0 0 30 2 *\", \"--count\", \"1\", \"--from\", \"2024-01-01T00:00:00Z\")\n    assert result.stdout == \"\"\n    assert result.returncode == 2\n    assert \"never runs\" in result.stderr\nEOF\n.venv/bin/pytest -q tests/test_cli.py 2>&1 | tail -4",
+      "seconds": 0.96,
+      "failed": true,
+      "at": "2026-09-13T13:01:15.119Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/tdd\" && python3 - <<'PY'\nimport pathlib\np = pathlib.Path(\"cron.py\")\ns = p.read_text()\ns = s.replace('''    for run in parse(args.expression).next_runs(start.astimezone(zone), args.count):\n        print(run.isoformat())\n    return 0''', '''    runs = parse(args.expression).next_runs(start.astimezone(zone), args.count)\n    if not runs:\n        raise CronError(\n            f\"{args.expression!r} never runs in the {HORIZON_DAYS // 366} years \"\n            f\"after {start.astimezone(zone).isoformat()}\"\n        )\n    for run in runs:\n        print(run.isoformat())\n    return 0''')\np.write_text(s)\nPY\n.venv/bin/pytest -q 2>&1 | tail -3",
+      "seconds": 0.94,
+      "failed": false,
+      "at": "2026-09-13T13:01:21.215Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/tdd\" && cat >> tests/test_errors.py <<'EOF'\n\n\ndef test_backwards_range_is_rejected():\n    with pytest.raises(CronError) as raised:\n        parse(\"* 5-1 * * *\")\n    assert \"hour\" in str(raised.value)\n    assert \"5-1\" in str(raised.value)\n\n\ndef test_zero_step_is_rejected():\n    with pytest.raises(CronError) as raised:\n        parse(\"*/0 * * * *\")\n    assert \"minute\" in str(raised.value)\nEOF\n.venv/bin/pytest -q tests/test_errors.py 2>&1 | tail -4",
+      "seconds": 0.44,
+      "failed": true,
+      "at": "2026-09-13T13:01:37.052Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/tdd\" && python3 - <<'PY'\nimport pathlib\np = pathlib.Path(\"cron.py\")\ns = p.read_text()\ns = s.replace('''    if \"-\" in text:\n        start, _, end = text.partition(\"-\")\n        return set(range(_value(start, names), _value(end, names) + 1))''',\n'''    if \"-\" in text:\n        start, _, end = text.partition(\"-\")\n        values = set(range(_value(start, names), _value(end, names) + 1))\n        if not values:\n            raise ValueError(f\"empty range {text!r}\")\n        return values''')\np.write_text(s)\nPY\n.venv/bin/pytest -q 2>&1 | tail -3",
+      "seconds": 0.94,
+      "failed": false,
+      "at": "2026-09-13T13:01:42.239Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/tdd\" && cat >> tests/test_cli.py <<'EOF'\n\n\ndef test_count_must_be_positive():\n    result = run(\"next\", \"* * * * *\", \"--count\", \"0\")\n    assert result.returncode == 2\n    assert \"Traceback\" not in result.stderr\n    assert \"--count\" in result.stderr\nEOF\n.venv/bin/pytest -q tests/test_cli.py 2>&1 | tail -4",
+      "seconds": 18.71,
+      "failed": true,
+      "at": "2026-09-13T13:01:47.636Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/tdd\" && python3 - <<'PY'\nimport pathlib\np = pathlib.Path(\"cron.py\")\ns = p.read_text()\ns = s.replace('''    runs = parse(args.expression).next_runs(start.astimezone(zone), args.count)''',\n'''    if args.count < 1:\n        raise CronError(f\"--count must be 1 or more, got {args.count}\")\n    runs = parse(args.expression).next_runs(start.astimezone(zone), args.count)''')\np.write_text(s)\nPY\n.venv/bin/pytest -q 2>&1 | tail -3",
+      "seconds": 0.97,
+      "failed": false,
+      "at": "2026-09-13T13:02:16.370Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/tdd\" && cat >> tests/test_describe.py <<'EOF'\n\n\ndef test_working_hours_schedule():\n    assert describe(\"0 9-17 * * 1-5\") == (\n        \"at minute 0 past hours 9-17 on Monday, Tuesday, Wednesday, Thursday and Friday\"\n    )\n\n\ndef test_several_minutes_of_every_hour():\n    assert describe(\"0,30 * * * *\") == \"at minutes 0 and 30 past every hour\"\nEOF\n.venv/bin/pytest -q tests/test_describe.py 2>&1 | tail -4",
+      "seconds": 0.4,
+      "failed": true,
+      "at": "2026-09-13T13:02:43.853Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/tdd\" && python3 - <<'PY'\nimport pathlib\np = pathlib.Path(\"cron.py\")\ns = p.read_text()\ns = s.replace('''    hour = next(iter(schedule.hours))\n    minute = next(iter(schedule.minutes))\n    return f\"at {hour:02d}:{minute:02d}\"''', '''    if len(schedule.hours) == 1 and len(schedule.minutes) == 1:\n        (hour,), (minute,) = schedule.hours, schedule.minutes\n        return f\"at {hour:02d}:{minute:02d}\"\n    minutes = _plural(\"minute\", sorted(schedule.minutes))\n    if len(schedule.hours) == 24:\n        return f\"at {minutes} past every hour\"\n    return f\"at {minutes} past {_plural('hour', sorted(schedule.hours))}\"\n\n\ndef _plural(noun: str, values: list[int]) -> str:\n    label = noun if len(values) == 1 else noun + \"s\"\n    return f\"{label} {_number_list(values)}\"\n\n\ndef _number_list(values: list[int]) -> str:\n    \"\"\"Compact list of numbers, contiguous runs collapsed: [9..17] -> \"9-17\".\"\"\"\n    runs: list[list[int]] = []\n    for value in values:\n        if runs and value == runs[-1][-1] + 1:\n            runs[-1].append(value)\n        else:\n            runs.append([value])\n    return _join(\n        f\"{run[0]}-{run[-1]}\" if len(run) > 1 else str(run[0]) for run in runs\n    )''')\np.write_text(s)\nPY\n.venv/bin/pytest -q 2>&1 | tail -4",
+      "seconds": 1.02,
+      "failed": true,
+      "at": "2026-09-13T13:02:55.735Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/tdd\" && .venv/bin/pytest -q tests/test_describe.py 2>&1 | grep -A3 \"assert\"| head -12",
+      "seconds": 0.44,
+      "failed": false,
+      "at": "2026-09-13T13:03:02.387Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/tdd\" && python3 - <<'PY'\nimport pathlib\np = pathlib.Path(\"tests/test_describe.py\")\ns = p.read_text().replace(\n'''def test_several_minutes_of_every_hour():\n    assert describe(\"0,30 * * * *\") == \"at minutes 0 and 30 past every hour\"''',\n'''def test_several_minutes_of_every_hour():\n    assert describe(\"5,35 * * * *\") == \"at minutes 5 and 35 past every hour\"\n\n\ndef test_a_list_that_happens_to_be_a_step_reads_as_a_step():\n    assert describe(\"0,30 * * * *\") == \"every 30 minutes\"''')\np.write_text(s)\nPY\n.venv/bin/pytest -q 2>&1 | tail -3",
+      "seconds": 0.95,
+      "failed": false,
+      "at": "2026-09-13T13:03:11.225Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/cron-parser/python/tdd\" && .venv/bin/pytest -q 2>&1 | tail -2 && git status --short",
+      "seconds": 0.98,
+      "failed": false,
+      "at": "2026-09-13T13:03:25.332Z"
+    }
+  ]
+}

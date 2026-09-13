@@ -1,0 +1,251 @@
+{
+  "label": "tdd",
+  "workspace": "/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/ledger/go/tdd",
+  "sessions": [
+    "0d78b0b6-5396-47a4-9cd1-54389b02a29c"
+  ],
+  "started": "2026-09-13T12:48:34.991Z",
+  "ended": "2026-09-13T13:01:17.696Z",
+  "models": {
+    "claude-opus-5": 85
+  },
+  "wall_clock_s": 762.7,
+  "active_s": 670.8,
+  "test_seconds": 20.4,
+  "selector_seconds": 0,
+  "test_share_of_active": 0.03,
+  "test_runs": 34,
+  "selector_queries": 0,
+  "failed_runs": 15,
+  "red_green_cycles": 13,
+  "mean_run_s": 0.6,
+  "slowest_run_s": 6.95,
+  "assistant_turns": 85,
+  "tokens": {
+    "input_tokens": 170,
+    "output_tokens": 75844,
+    "cache_read_input_tokens": 6864073,
+    "cache_creation_input_tokens": 146513,
+    "thinking_tokens": 26839
+  },
+  "billable_tokens": 222527,
+  "tool_calls": {
+    "Bash": 39
+  },
+  "project": {
+    "tests_reported": 18,
+    "test_suites": 1,
+    "main_files": 3,
+    "test_files": 1,
+    "main_loc": 537,
+    "test_loc": 395,
+    "commits": 2
+  },
+  "rtdd": null,
+  "runs": [
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/ledger/go/tdd\" && cat > cli_test.go <<'EOF'\npackage main\n\nimport (\n\t\"bytes\"\n\t\"os\"\n\t\"path/filepath\"\n\t\"strings\"\n\t\"testing\"\n)\n\n// writeJournal writes named files into a fresh temp dir and returns the path of the first.\nfunc writeJournal(t *testing.T, files map[string]string, main string) string {\n\tt.Helper()\n\tdir := t.TempDir()\n\tfor name, body := range files {\n\t\tpath := filepath.Join(dir, name)\n\t\tif err := os.WriteFile(path, []byte(body), 0o644); err != nil {\n\t\t\tt.Fatal(err)\n\t\t}\n\t}\n\treturn filepath.Join(dir, main)\n}\n\nfunc runCLI(t *testing.T, args ...string) (string, string, int) {\n\tt.Helper()\n\tvar out, errb bytes.Buffer\n\tcode := run(args, &out, &errb)\n\treturn out.String(), errb.String(), code\n}\n\nfunc TestValidateBalancedJournalReportsNothing(t *testing.T) {\n\tpath := writeJournal(t, map[string]string{\"main.journal\": `2026-01-04 Grocery store\n  expenses:food      42.50 USD\n  assets:checking   -42.50 USD\n`}, \"main.journal\")\n\n\tout, errOut, code := runCLI(t, \"validate\", path)\n\n\tif code != 0 {\n\t\tt.Fatalf(\"exit code = %d, want 0 (stderr: %q)\", code, errOut)\n\t}\n\tif strings.TrimSpace(out) != \"\" {\n\t\tt.Errorf(\"stdout = %q, want empty\", out)\n\t}\n}\nEOF\ngo test ./... 2>&1 | head -20",
+      "seconds": 0.22,
+      "failed": true,
+      "at": "2026-09-13T12:51:51.756Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/ledger/go/tdd\" && cat > journal.go <<'EOF'\npackage main\n\nimport (\n\t\"bufio\"\n\t\"fmt\"\n\t\"os\"\n\t\"strings\"\n)\n\n// Amount is a quantity of a commodity, scaled by scale to avoid float error.\ntype Amount struct {\n\tVal  int64\n\tComm string\n}\n\nconst scale = 100000000 // 1e8\n\n// Posting is one account line of a transaction.\ntype Posting struct {\n\tAccount string\n\tAmount  Amount\n\tLine    int\n}\n\n// Transaction is a dated entry with its postings.\ntype Transaction struct {\n\tDate     string\n\tPayee    string\n\tPostings []Posting\n\tLine     int\n\tFile     string\n}\n\n// Journal is a parsed ledger file, includes flattened in.\ntype Journal struct {\n\tTransactions []Transaction\n}\n\n// ParseFile reads path (following include directives) into a Journal.\nfunc ParseFile(path string) (*Journal, error) {\n\tj := &Journal{}\n\tif err := parseInto(j, path); err != nil {\n\t\treturn nil, err\n\t}\n\treturn j, nil\n}\n\nfunc parseInto(j *Journal, path string) error {\n\tf, err := os.Open(path)\n\tif err != nil {\n\t\treturn fmt.Errorf(\"%s: %v\", path, err)\n\t}\n\tdefer f.Close()\n\n\tsc := bufio.NewScanner(f)\n\tlineNo := 0\n\tvar cur *Transaction\n\tfor sc.Scan() {\n\t\tlineNo++\n\t\traw := sc.Text()\n\t\tline := strings.TrimRight(stripComment(raw), \" \\t\")\n\t\tif strings.TrimSpace(line) == \"\" {\n\t\t\tcur = nil\n\t\t\tcontinue\n\t\t}\n\t\tindented := line[0] == ' ' || line[0] == '\\t'\n\t\tif !indented {\n\t\t\tdate, payee, err := parseHeader(line)\n\t\t\tif err != nil {\n\t\t\t\treturn fmt.Errorf(\"%s:%d: %v\", path, lineNo, err)\n\t\t\t}\n\t\t\tj.Transactions = append(j.Transactions, Transaction{Date: date, Payee: payee, Line: lineNo, File: path})\n\t\t\tcur = &j.Transactions[len(j.Transactions)-1]\n\t\t\tcontinue\n\t\t}\n\t\tif cur == nil {\n\t\t\treturn fmt.Errorf(\"%s:%d: posting outside of any transaction\", path, lineNo)\n\t\t}\n\t\tp, err := parsePosting(strings.TrimSpace(line))\n\t\tif err != nil {\n\t\t\treturn fmt.Errorf(\"%s:%d: %v\", path, lineNo, err)\n\t\t}\n\t\tp.Line = lineNo\n\t\tcur.Postings = append(cur.Postings, p)\n\t}\n\treturn sc.Err()\n}\n\nfunc stripComment(line string) string {\n\tif i := strings.IndexByte(line, ';'); i >= 0 {\n\t\treturn line[:i]\n\t}\n\treturn line\n}\n\nfunc parseHeader(line string) (date, payee string, err error) {\n\tparts := strings.SplitN(line, \" \", 2)\n\tdate = parts[0]\n\tif err := checkDate(date); err != nil {\n\t\treturn \"\", \"\", err\n\t}\n\tif len(parts) == 2 {\n\t\tpayee = strings.TrimSpace(parts[1])\n\t}\n\treturn date, payee, nil\n}\n\nfunc checkDate(s string) error {\n\tif len(s) != 10 || s[4] != '-' || s[7] != '-' {\n\t\treturn fmt.Errorf(\"malformed date %q, want YYYY-MM-DD\", s)\n\t}\n\tfor i, c := range s {\n\t\tif i == 4 || i == 7 {\n\t\t\tcontinue\n\t\t}\n\t\tif c < '0' || c > '9' {\n\t\t\treturn fmt.Errorf(\"malformed date %q, want YYYY-MM-DD\", s)\n\t\t}\n\t}\n\treturn nil\n}\n\n// parsePosting splits \"account  -42.50 USD\" on two-or-more spaces (or a tab).\nfunc parsePosting(line string) (Posting, error) {\n\taccount, amountText := splitPosting(line)\n\tif account == \"\" {\n\t\treturn Posting{}, fmt.Errorf(\"posting has no account name\")\n\t}\n\tp := Posting{Account: account}\n\tif amountText == \"\" {\n\t\treturn p, nil\n\t}\n\tamt, err := parseAmount(amountText)\n\tif err != nil {\n\t\treturn Posting{}, err\n\t}\n\tp.Amount = amt\n\treturn p, nil\n}\n\nfunc splitPosting(line string) (account, amount string) {\n\tif i := strings.Index(line, \"\\t\"); i >= 0 {\n\t\treturn strings.TrimSpace(line[:i]), strings.TrimSpace(line[i+1:])\n\t}\n\tif i := strings.Index(line, \"  \"); i >= 0 {\n\t\treturn strings.TrimSpace(line[:i]), strings.TrimSpace(line[i+2:])\n\t}\n\treturn strings.TrimSpace(line), \"\"\n}\n\nfunc parseAmount(s string) (Amount, error) {\n\tfields := strings.Fields(s)\n\tif len(fields) != 2 {\n\t\treturn Amount{}, fmt.Errorf(\"malformed amount %q, want e.g. -42.50 USD\", s)\n\t}\n\tval, err := parseDecimal(fields[0])\n\tif err != nil {\n\t\treturn Amount{}, err\n\t}\n\treturn Amount{Val: val, Comm: fields[1]}, nil\n}\n\nfunc parseDecimal(s string) (int64, error) {\n\tbad := fmt.Errorf(\"malformed number %q\", s)\n\tneg := false\n\tbody := s\n\tif strings.HasPrefix(body, \"-\") {\n\t\tneg, body = true, body[1:]\n\t} else if strings.HasPrefix(body, \"+\") {\n\t\tbody = body[1:]\n\t}\n\tintPart, fracPart := body, \"\"\n\tif i := strings.IndexByte(body, '.'); i >= 0 {\n\t\tintPart, fracPart = body[:i], body[i+1:]\n\t}\n\tif intPart == \"\" && fracPart == \"\" {\n\t\treturn 0, bad\n\t}\n\tif len(fracPart) > 8 {\n\t\treturn 0, fmt.Errorf(\"number %q has more than 8 decimal places\", s)\n\t}\n\tvar val int64\n\tfor _, c := range intPart + fracPart {\n\t\tif c < '0' || c > '9' {\n\t\t\treturn 0, bad\n\t\t}\n\t\tval = val*10 + int64(c-'0')\n\t}\n\tfor i := len(fracPart); i < 8; i++ {\n\t\tval *= 10\n\t}\n\tif neg {\n\t\tval = -val\n\t}\n\treturn val, nil\n}\nEOF\ncat > main.go <<'EOF'\npackage main\n\nimport (\n\t\"fmt\"\n\t\"io\"\n\t\"os\"\n)\n\nfunc main() {\n\tos.Exit(run(os.Args[1:], os.Stdout, os.Stderr))\n}\n\nfunc run(args []string, stdout, stderr io.Writer) int {\n\tif len(args) < 2 {\n\t\tfmt.Fprintln(stderr, \"usage: ledger <validate|balance|register> <file> [options]\")\n\t\treturn 2\n\t}\n\tcmd, path := args[0], args[1]\n\tswitch cmd {\n\tcase \"validate\":\n\t\tif _, err := ParseFile(path); err != nil {\n\t\t\tfmt.Fprintln(stderr, \"ledger:\", err)\n\t\t\treturn 1\n\t\t}\n\t\treturn 0\n\tdefault:\n\t\tfmt.Fprintf(stderr, \"ledger: unknown command %q\\n\", cmd)\n\t\treturn 2\n\t}\n}\nEOF\ngofmt -l . ; go test ./... 2>&1 | tail -5",
+      "seconds": 0.39,
+      "failed": false,
+      "at": "2026-09-13T12:52:20.432Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/ledger/go/tdd\" && cat >> cli_test.go <<'EOF'\n\nfunc TestValidateReportsImbalanceWithLineNumber(t *testing.T) {\n\tpath := writeJournal(t, map[string]string{\"main.journal\": `2026-01-04 Grocery store\n  expenses:food      42.50 USD\n  assets:checking   -40.00 USD\n\n2026-01-05 Rent\n  expenses:rent     1200.00 USD\n  assets:checking  -1200.00 USD\n`}, \"main.journal\")\n\n\tout, _, code := runCLI(t, \"validate\", path)\n\n\tif code != 1 {\n\t\tt.Fatalf(\"exit code = %d, want 1\", code)\n\t}\n\tlines := strings.Split(strings.TrimSpace(out), \"\\n\")\n\tif len(lines) != 1 {\n\t\tt.Fatalf(\"got %d report lines, want 1:\\n%s\", len(lines), out)\n\t}\n\tif !strings.Contains(lines[0], \":1:\") {\n\t\tt.Errorf(\"report %q does not name line 1\", lines[0])\n\t}\n\tif !strings.Contains(lines[0], \"2.50 USD\") {\n\t\tt.Errorf(\"report %q does not state the 2.50 USD residual\", lines[0])\n\t}\n}\nEOF\ngo test ./... 2>&1 | tail -10",
+      "seconds": 0.36,
+      "failed": true,
+      "at": "2026-09-13T12:52:29.354Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/ledger/go/tdd\" && cat >> journal.go <<'EOF'\n\n// Residual is the non-zero per-commodity sum of the transaction's postings,\n// ordered by commodity. An empty result means the transaction balances.\nfunc (t Transaction) Residual() []Amount {\n\tsums := map[string]int64{}\n\tvar order []string\n\tfor _, p := range t.Postings {\n\t\tif _, seen := sums[p.Amount.Comm]; !seen {\n\t\t\torder = append(order, p.Amount.Comm)\n\t\t}\n\t\tsums[p.Amount.Comm] += p.Amount.Val\n\t}\n\tsort.Strings(order)\n\tvar out []Amount\n\tfor _, c := range order {\n\t\tif sums[c] != 0 {\n\t\t\tout = append(out, Amount{Val: sums[c], Comm: c})\n\t\t}\n\t}\n\treturn out\n}\n\n// String renders an amount with at least two decimal places, e.g. \"-42.50 USD\".\nfunc (a Amount) String() string {\n\tval, sign := a.Val, \"\"\n\tif val < 0 {\n\t\tval, sign = -val, \"-\"\n\t}\n\tfrac := fmt.Sprintf(\"%08d\", val%scale)\n\tfor len(frac) > 2 && frac[len(frac)-1] == '0' {\n\t\tfrac = frac[:len(frac)-1]\n\t}\n\ts := fmt.Sprintf(\"%s%d.%s\", sign, val/scale, frac)\n\tif a.Comm != \"\" {\n\t\ts += \" \" + a.Comm\n\t}\n\treturn s\n}\n\nfunc joinAmounts(as []Amount) string {\n\tparts := make([]string, len(as))\n\tfor i, a := range as {\n\t\tparts[i] = a.String()\n\t}\n\treturn strings.Join(parts, \", \")\n}\nEOF\nsed -i 's|^\\t\"os\"$|\\t\"os\"\\n\\t\"sort\"|' journal.go\npython3 - <<'PY'\nimport re\np='main.go'\ns=open(p).read()\ns=s.replace('''\tcase \"validate\":\n\t\tif _, err := ParseFile(path); err != nil {\n\t\t\tfmt.Fprintln(stderr, \"ledger:\", err)\n\t\t\treturn 1\n\t\t}\n\t\treturn 0''','''\tcase \"validate\":\n\t\tj, err := ParseFile(path)\n\t\tif err != nil {\n\t\t\tfmt.Fprintln(stderr, \"ledger:\", err)\n\t\t\treturn 1\n\t\t}\n\t\treturn validate(j, stdout)''')\ns+='''\n// validate reports every transaction that does not sum to zero.\nfunc validate(j *Journal, stdout io.Writer) int {\n\tcode := 0\n\tfor _, t := range j.Transactions {\n\t\tresidual := t.Residual()\n\t\tif len(residual) == 0 {\n\t\t\tcontinue\n\t\t}\n\t\tfmt.Fprintf(stdout, \"%s:%d: transaction %q does not balance, off by %s\\\\n\",\n\t\t\tt.File, t.Line, t.Payee, joinAmounts(residual))\n\t\tcode = 1\n\t}\n\treturn code\n}\n'''\nopen(p,'w').write(s)\nPY\ngofmt -w . && go test ./... 2>&1 | tail -10",
+      "seconds": 0.4,
+      "failed": false,
+      "at": "2026-09-13T12:52:42.856Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/ledger/go/tdd\" && cat >> cli_test.go <<'EOF'\n\nfunc TestValidateInfersTheOneOmittedAmount(t *testing.T) {\n\tpath := writeJournal(t, map[string]string{\"main.journal\": `2026-01-04 Grocery store\n  expenses:food      42.50 USD\n  assets:checking\n`}, \"main.journal\")\n\n\tout, errOut, code := runCLI(t, \"validate\", path)\n\n\tif code != 0 || strings.TrimSpace(out) != \"\" {\n\t\tt.Fatalf(\"exit %d, stdout %q, stderr %q; want a balanced journal\", code, out, errOut)\n\t}\n}\nEOF\ngo test ./... 2>&1 | tail -6",
+      "seconds": 0.38,
+      "failed": true,
+      "at": "2026-09-13T12:52:54.124Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/ledger/go/tdd\" && python3 - <<'PY'\np='journal.go'\ns=open(p).read()\ns=s.replace('''type Posting struct {\n\tAccount string\n\tAmount  Amount\n\tLine    int\n}''','''type Posting struct {\n\tAccount   string\n\tAmount    Amount\n\tHasAmount bool\n\tLine      int\n}''')\ns=s.replace('''\tif err := parseInto(j, path); err != nil {\n\t\treturn nil, err\n\t}\n\treturn j, nil''','''\tif err := parseInto(j, path); err != nil {\n\t\treturn nil, err\n\t}\n\tfor i := range j.Transactions {\n\t\tif err := inferAmount(&j.Transactions[i]); err != nil {\n\t\t\treturn nil, err\n\t\t}\n\t}\n\treturn j, nil''')\ns=s.replace('''\tp.Amount = amt\n\treturn p, nil''','''\tp.Amount = amt\n\tp.HasAmount = true\n\treturn p, nil''')\ns=s.replace('''// Residual is''','''// inferAmount fills in the single posting that omits its amount so that the\n// transaction sums to zero.\nfunc inferAmount(t *Transaction) error {\n\telided := -1\n\tfor i, p := range t.Postings {\n\t\tif p.HasAmount {\n\t\t\tcontinue\n\t\t}\n\t\tif elided >= 0 {\n\t\t\treturn fmt.Errorf(\"%s:%d: only one posting per transaction may omit its amount\", t.File, p.Line)\n\t\t}\n\t\telided = i\n\t}\n\tif elided < 0 {\n\t\treturn nil\n\t}\n\tresidual := t.Residual()\n\tif len(residual) > 1 {\n\t\treturn fmt.Errorf(\"%s:%d: cannot infer an amount in more than one commodity\", t.File, t.Postings[elided].Line)\n\t}\n\tif len(residual) == 1 {\n\t\tt.Postings[elided].Amount = Amount{Val: -residual[0].Val, Comm: residual[0].Comm}\n\t}\n\tt.Postings[elided].HasAmount = true\n\treturn nil\n}\n\n// Residual is''')\nopen(p,'w').write(s)\nPY\ngofmt -w . && go test ./... 2>&1 | tail -6",
+      "seconds": 0.41,
+      "failed": false,
+      "at": "2026-09-13T12:53:08.245Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/ledger/go/tdd\" && cat >> cli_test.go <<'EOF'\n\nfunc TestValidateRejectsTwoOmittedAmounts(t *testing.T) {\n\tpath := writeJournal(t, map[string]string{\"main.journal\": `2026-01-04 Grocery store\n  expenses:food      42.50 USD\n  assets:checking\n  assets:cash\n`}, \"main.journal\")\n\n\t_, errOut, code := runCLI(t, \"validate\", path)\n\n\tif code != 1 {\n\t\tt.Fatalf(\"exit code = %d, want 1\", code)\n\t}\n\tif !strings.Contains(errOut, \":4:\") {\n\t\tt.Errorf(\"error %q does not name line 4\", errOut)\n\t}\n\tif !strings.Contains(errOut, \"one posting\") {\n\t\tt.Errorf(\"error %q does not explain the rule\", errOut)\n\t}\n}\nEOF\ngo test ./... 2>&1 | tail -6",
+      "seconds": 0.54,
+      "failed": false,
+      "at": "2026-09-13T12:53:14.591Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/ledger/go/tdd\" && cat >> cli_test.go <<'EOF'\n\nconst twoTxnJournal = `2026-01-04 Grocery store\n  expenses:food:groceries    42.50 USD\n  assets:checking\n\n2026-01-05 Bus\n  expenses:transit            2.00 USD\n  assets:checking            -2.00 USD\n`\n\nfunc TestBalanceIndentsTheAccountTreeAndTotalsParents(t *testing.T) {\n\tpath := writeJournal(t, map[string]string{\"main.journal\": twoTxnJournal}, \"main.journal\")\n\n\tout, errOut, code := runCLI(t, \"balance\", path)\n\n\tif code != 0 {\n\t\tt.Fatalf(\"exit code = %d, want 0 (stderr: %q)\", code, errOut)\n\t}\n\twant := []string{\n\t\t\"assets                        -44.50 USD\",\n\t\t\"  checking                    -44.50 USD\",\n\t\t\"expenses                       44.50 USD\",\n\t\t\"  food                         42.50 USD\",\n\t\t\"    groceries                  42.50 USD\",\n\t\t\"  transit                       2.00 USD\",\n\t}\n\tgot := strings.Split(strings.TrimRight(out, \"\\n\"), \"\\n\")\n\tif len(got) != len(want) {\n\t\tt.Fatalf(\"got %d lines, want %d:\\n%s\", len(got), len(want), out)\n\t}\n\tfor i := range want {\n\t\tif got[i] != want[i] {\n\t\t\tt.Errorf(\"line %d = %q, want %q\", i+1, got[i], want[i])\n\t\t}\n\t}\n}\nEOF\ngo test ./... 2>&1 | tail -6",
+      "seconds": 0.36,
+      "failed": true,
+      "at": "2026-09-13T12:53:36.502Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/ledger/go/tdd\" && cat > report.go <<'EOF'\npackage main\n\nimport (\n\t\"fmt\"\n\t\"io\"\n\t\"sort\"\n\t\"strings\"\n)\n\n// balances sums every posting into its own account.\nfunc balances(j *Journal) map[string]map[string]int64 {\n\tacc := map[string]map[string]int64{}\n\tfor _, t := range j.Transactions {\n\t\tfor _, p := range t.Postings {\n\t\t\tif acc[p.Account] == nil {\n\t\t\t\tacc[p.Account] = map[string]int64{}\n\t\t\t}\n\t\t\tacc[p.Account][p.Amount.Comm] += p.Amount.Val\n\t\t}\n\t}\n\treturn acc\n}\n\n// accountTree returns every account and parent account, sorted by segment.\nfunc accountTree(acc map[string]map[string]int64) []string {\n\tseen := map[string]bool{}\n\tfor name := range acc {\n\t\tsegs := strings.Split(name, \":\")\n\t\tfor i := range segs {\n\t\t\tseen[strings.Join(segs[:i+1], \":\")] = true\n\t\t}\n\t}\n\tnodes := make([]string, 0, len(seen))\n\tfor name := range seen {\n\t\tnodes = append(nodes, name)\n\t}\n\tsort.Strings(nodes)\n\treturn nodes\n}\n\n// subtreeTotal sums an account and everything below it.\n// ponytail: O(accounts^2); fine for journal-sized input.\nfunc subtreeTotal(acc map[string]map[string]int64, node string) []Amount {\n\tsums := map[string]int64{}\n\tfor name, comms := range acc {\n\t\tif name != node && !strings.HasPrefix(name, node+\":\") {\n\t\t\tcontinue\n\t\t}\n\t\tfor c, v := range comms {\n\t\t\tsums[c] += v\n\t\t}\n\t}\n\tvar out []Amount\n\tfor c, v := range sums {\n\t\tif v != 0 {\n\t\t\tout = append(out, Amount{Val: v, Comm: c})\n\t\t}\n\t}\n\tsort.Slice(out, func(i, k int) bool { return out[i].Comm < out[k].Comm })\n\treturn out\n}\n\nfunc reportBalance(j *Journal, stdout io.Writer, depth int) int {\n\tacc := balances(j)\n\tfor _, node := range accountTree(acc) {\n\t\tsegs := strings.Split(node, \":\")\n\t\tif depth > 0 && len(segs) > depth {\n\t\t\tcontinue\n\t\t}\n\t\ttotal := subtreeTotal(acc, node)\n\t\tif len(total) == 0 {\n\t\t\tcontinue\n\t\t}\n\t\tlabel := strings.Repeat(\"  \", len(segs)-1) + segs[len(segs)-1]\n\t\tfmt.Fprintf(stdout, \"%-30s%10s\\n\", label, joinAmounts(total))\n\t}\n\treturn 0\n}\nEOF\npython3 - <<'PY'\np='main.go'\ns=open(p).read()\ns=s.replace('''import (\n\t\"fmt\"\n\t\"io\"\n\t\"os\"\n)''','''import (\n\t\"flag\"\n\t\"fmt\"\n\t\"io\"\n\t\"os\"\n)''')\ns=s.replace('''\tcmd, path := args[0], args[1]\n\tswitch cmd {\n\tcase \"validate\":\n\t\tj, err := ParseFile(path)\n\t\tif err != nil {\n\t\t\tfmt.Fprintln(stderr, \"ledger:\", err)\n\t\t\treturn 1\n\t\t}\n\t\treturn validate(j, stdout)\n\tdefault:''','''\tcmd := args[0]\n\tfs := flag.NewFlagSet(cmd, flag.ContinueOnError)\n\tfs.SetOutput(stderr)\n\tdepth := fs.Int(\"depth\", 0, \"limit the account tree to N levels\")\n\tpath, err := parseFlags(fs, args[1:])\n\tif err != nil {\n\t\tfmt.Fprintln(stderr, \"ledger:\", err)\n\t\treturn 2\n\t}\n\n\tswitch cmd {\n\tcase \"validate\", \"balance\":\n\t\tj, err := ParseFile(path)\n\t\tif err != nil {\n\t\t\tfmt.Fprintln(stderr, \"ledger:\", err)\n\t\t\treturn 1\n\t\t}\n\t\tif cmd == \"validate\" {\n\t\t\treturn validate(j, stdout)\n\t\t}\n\t\treturn reportBalance(j, stdout, *depth)\n\tdefault:''')\ns+='''\n// parseFlags accepts options before or after the file argument and returns the file.\nfunc parseFlags(fs *flag.FlagSet, args []string) (string, error) {\n\tpath := \"\"\n\tfor {\n\t\tif err := fs.Parse(args); err != nil {\n\t\t\treturn \"\", err\n\t\t}\n\t\trest := fs.Args()\n\t\tif len(rest) == 0 {\n\t\t\tbreak\n\t\t}\n\t\tif path != \"\" {\n\t\t\treturn \"\", fmt.Errorf(\"unexpected extra argument %q\", rest[0])\n\t\t}\n\t\tpath, args = rest[0], rest[1:]\n\t}\n\tif path == \"\" {\n\t\treturn \"\", fmt.Errorf(\"no journal file given\")\n\t}\n\treturn path, nil\n}\n'''\nopen(p,'w').write(s)\nPY\ngofmt -w . && go test ./... 2>&1 | tail -12",
+      "seconds": 0.42,
+      "failed": false,
+      "at": "2026-09-13T12:54:18.168Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/ledger/go/tdd\" && cat >> cli_test.go <<'EOF'\n\nfunc TestBalanceDepthLimitsTheTreeButKeepsTotals(t *testing.T) {\n\tpath := writeJournal(t, map[string]string{\"main.journal\": twoTxnJournal}, \"main.journal\")\n\n\tout, errOut, code := runCLI(t, \"balance\", path, \"--depth\", \"2\")\n\n\tif code != 0 {\n\t\tt.Fatalf(\"exit code = %d, want 0 (stderr: %q)\", code, errOut)\n\t}\n\twant := \"assets                        -44.50 USD\\n\" +\n\t\t\"  checking                    -44.50 USD\\n\" +\n\t\t\"expenses                       44.50 USD\\n\" +\n\t\t\"  food                         42.50 USD\\n\" +\n\t\t\"  transit                       2.00 USD\\n\"\n\tif out != want {\n\t\tt.Errorf(\"got:\\n%s\\nwant:\\n%s\", out, want)\n\t}\n}\nEOF\ngo test ./... 2>&1 | tail -8",
+      "seconds": 0.36,
+      "failed": false,
+      "at": "2026-09-13T12:54:26.550Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/ledger/go/tdd\" && cat >> cli_test.go <<'EOF'\n\nfunc TestRegisterListsEveryPostingWithDateAndPayee(t *testing.T) {\n\tpath := writeJournal(t, map[string]string{\"main.journal\": twoTxnJournal}, \"main.journal\")\n\n\tout, errOut, code := runCLI(t, \"register\", path)\n\n\tif code != 0 {\n\t\tt.Fatalf(\"exit code = %d, want 0 (stderr: %q)\", code, errOut)\n\t}\n\twant := \"2026-01-04 Grocery store         expenses:food:groceries        42.50 USD\\n\" +\n\t\t\"                                 assets:checking               -42.50 USD\\n\" +\n\t\t\"2026-01-05 Bus                   expenses:transit                2.00 USD\\n\" +\n\t\t\"                                 assets:checking                -2.00 USD\\n\"\n\tif out != want {\n\t\tt.Errorf(\"got:\\n%s\\nwant:\\n%s\", out, want)\n\t}\n}\nEOF\ngo test ./... 2>&1 | tail -8",
+      "seconds": 0.36,
+      "failed": true,
+      "at": "2026-09-13T12:54:45.855Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/ledger/go/tdd\" && cat >> report.go <<'EOF'\n\nfunc reportRegister(j *Journal, stdout io.Writer) int {\n\tfor _, t := range j.Transactions {\n\t\tfor i, p := range t.Postings {\n\t\t\tdate, payee := \"\", \"\"\n\t\t\tif i == 0 {\n\t\t\t\tdate, payee = t.Date, t.Payee\n\t\t\t}\n\t\t\tfmt.Fprintf(stdout, \"%-11s%-22s%-30s%10s\\n\", date, payee, p.Account, p.Amount)\n\t\t}\n\t}\n\treturn 0\n}\nEOF\npython3 - <<'PY'\np='main.go'\ns=open(p).read()\ns=s.replace('''\tcase \"validate\", \"balance\":''','''\tcase \"validate\", \"balance\", \"register\":''')\ns=s.replace('''\t\tif cmd == \"validate\" {\n\t\t\treturn validate(j, stdout)\n\t\t}\n\t\treturn reportBalance(j, stdout, *depth)''','''\t\tswitch cmd {\n\t\tcase \"validate\":\n\t\t\treturn validate(j, stdout)\n\t\tcase \"balance\":\n\t\t\treturn reportBalance(j, stdout, *depth)\n\t\t}\n\t\treturn reportRegister(j, stdout)''')\nopen(p,'w').write(s)\nPY\ngofmt -w . && go test ./... 2>&1 | tail -8",
+      "seconds": 0.38,
+      "failed": false,
+      "at": "2026-09-13T12:54:51.495Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/ledger/go/tdd\" && cat >> cli_test.go <<'EOF'\n\nfunc TestRegisterAccountFiltersToMatchingPostings(t *testing.T) {\n\tpath := writeJournal(t, map[string]string{\"main.journal\": twoTxnJournal}, \"main.journal\")\n\n\tout, errOut, code := runCLI(t, \"register\", path, \"--account\", \"checking\")\n\n\tif code != 0 {\n\t\tt.Fatalf(\"exit code = %d, want 0 (stderr: %q)\", code, errOut)\n\t}\n\twant := \"2026-01-04 Grocery store         assets:checking               -42.50 USD\\n\" +\n\t\t\"2026-01-05 Bus                   assets:checking                -2.00 USD\\n\"\n\tif out != want {\n\t\tt.Errorf(\"got:\\n%s\\nwant:\\n%s\", out, want)\n\t}\n}\nEOF\ngo test ./... 2>&1 | tail -8",
+      "seconds": 0.49,
+      "failed": true,
+      "at": "2026-09-13T12:54:59.352Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/ledger/go/tdd\" && python3 - <<'PY'\np='report.go'\ns=open(p).read()\ns=s.replace('''func reportRegister(j *Journal, stdout io.Writer) int {\n\tfor _, t := range j.Transactions {\n\t\tfor i, p := range t.Postings {\n\t\t\tdate, payee := \"\", \"\"\n\t\t\tif i == 0 {\n\t\t\t\tdate, payee = t.Date, t.Payee\n\t\t\t}''','''// registerFilter narrows the register to matching postings.\ntype registerFilter struct {\n\taccount string\n}\n\nfunc (f registerFilter) matches(p Posting) bool {\n\treturn f.account == \"\" || strings.Contains(p.Account, f.account)\n}\n\nfunc reportRegister(j *Journal, stdout io.Writer, f registerFilter) int {\n\tfor _, t := range j.Transactions {\n\t\tshown := 0\n\t\tfor _, p := range t.Postings {\n\t\t\tif !f.matches(p) {\n\t\t\t\tcontinue\n\t\t\t}\n\t\t\tdate, payee := \"\", \"\"\n\t\t\tif shown == 0 {\n\t\t\t\tdate, payee = t.Date, t.Payee\n\t\t\t}\n\t\t\tshown++''')\nopen(p,'w').write(s)\nPY\npython3 - <<'PY'\np='main.go'\ns=open(p).read()\ns=s.replace('''\tdepth := fs.Int(\"depth\", 0, \"limit the account tree to N levels\")''','''\tdepth := fs.Int(\"depth\", 0, \"limit the account tree to N levels\")\n\taccount := fs.String(\"account\", \"\", \"only postings whose account contains this text\")''')\ns=s.replace('''\t\treturn reportRegister(j, stdout)''','''\t\treturn reportRegister(j, stdout, registerFilter{account: *account})''')\nopen(p,'w').write(s)\nPY\ngofmt -w . && go test ./... 2>&1 | tail -8",
+      "seconds": 0.44,
+      "failed": false,
+      "at": "2026-09-13T12:55:07.214Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/ledger/go/tdd\" && cat >> cli_test.go <<'EOF'\n\nfunc TestRegisterSinceAndUntilBoundAreInclusive(t *testing.T) {\n\tpath := writeJournal(t, map[string]string{\"main.journal\": twoTxnJournal}, \"main.journal\")\n\n\tout, _, code := runCLI(t, \"register\", path, \"--since\", \"2026-01-05\")\n\tif code != 0 || strings.Count(out, \"2026-01-04\") != 0 || strings.Count(out, \"2026-01-05\") != 1 {\n\t\tt.Errorf(\"--since 2026-01-05 gave exit %d and:\\n%s\", code, out)\n\t}\n\n\tout, _, code = runCLI(t, \"register\", path, \"--until\", \"2026-01-04\")\n\tif code != 0 || strings.Count(out, \"2026-01-05\") != 0 || strings.Count(out, \"2026-01-04\") != 1 {\n\t\tt.Errorf(\"--until 2026-01-04 gave exit %d and:\\n%s\", code, out)\n\t}\n}\nEOF\ngo test ./... 2>&1 | tail -8",
+      "seconds": 0.34,
+      "failed": true,
+      "at": "2026-09-13T12:55:14.817Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/ledger/go/tdd\" && python3 - <<'PY'\np='report.go'\ns=open(p).read()\ns=s.replace('''type registerFilter struct {\n\taccount string\n}\n\nfunc (f registerFilter) matches(p Posting) bool {\n\treturn f.account == \"\" || strings.Contains(p.Account, f.account)\n}''','''type registerFilter struct {\n\taccount string\n\tsince   string\n\tuntil   string\n}\n\nfunc (f registerFilter) matches(p Posting) bool {\n\treturn f.account == \"\" || strings.Contains(p.Account, f.account)\n}\n\n// inRange compares ISO dates, which sort lexicographically. Both bounds are inclusive.\nfunc (f registerFilter) inRange(date string) bool {\n\tif f.since != \"\" && date < f.since {\n\t\treturn false\n\t}\n\treturn f.until == \"\" || date <= f.until\n}''')\ns=s.replace('''\tfor _, t := range j.Transactions {\n\t\tshown := 0''','''\tfor _, t := range j.Transactions {\n\t\tif !f.inRange(t.Date) {\n\t\t\tcontinue\n\t\t}\n\t\tshown := 0''')\nopen(p,'w').write(s)\nPY\npython3 - <<'PY'\np='main.go'\ns=open(p).read()\ns=s.replace('''\taccount := fs.String(\"account\", \"\", \"only postings whose account contains this text\")''','''\taccount := fs.String(\"account\", \"\", \"only postings whose account contains this text\")\n\tsince := fs.String(\"since\", \"\", \"only transactions on or after this date (YYYY-MM-DD)\")\n\tuntil := fs.String(\"until\", \"\", \"only transactions on or before this date (YYYY-MM-DD)\")''')\ns=s.replace('''\t\treturn reportRegister(j, stdout, registerFilter{account: *account})''','''\t\tfor _, d := range []string{*since, *until} {\n\t\t\tif d == \"\" {\n\t\t\t\tcontinue\n\t\t\t}\n\t\t\tif err := checkDate(d); err != nil {\n\t\t\t\tfmt.Fprintln(stderr, \"ledger:\", err)\n\t\t\t\treturn 2\n\t\t\t}\n\t\t}\n\t\treturn reportRegister(j, stdout, registerFilter{account: *account, since: *since, until: *until})''')\nopen(p,'w').write(s)\nPY\ngofmt -w . && go test ./... 2>&1 | tail -8",
+      "seconds": 0.43,
+      "failed": false,
+      "at": "2026-09-13T12:55:23.111Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/ledger/go/tdd\" && cat >> cli_test.go <<'EOF'\n\nfunc TestBalanceKeepsCommoditiesSeparate(t *testing.T) {\n\tpath := writeJournal(t, map[string]string{\"main.journal\": `2026-01-04 Grocery store\n  expenses:food    42.50 USD\n  assets:checking\n\n2026-01-06 Bakery in Paris\n  expenses:food    10.00 EUR\n  assets:checking\n`}, \"main.journal\")\n\n\tout, _, code := runCLI(t, \"balance\", path)\n\n\tif code != 0 {\n\t\tt.Fatalf(\"exit code = %d, want 0\", code)\n\t}\n\tfor _, want := range []string{\n\t\t\"assets                        -10.00 EUR, -42.50 USD\",\n\t\t\"expenses                       10.00 EUR, 42.50 USD\",\n\t} {\n\t\tif !strings.Contains(out, want) {\n\t\t\tt.Errorf(\"balance output missing %q:\\n%s\", want, out)\n\t\t}\n\t}\n}\n\nfunc TestValidateReportsImbalancePerCommodity(t *testing.T) {\n\tpath := writeJournal(t, map[string]string{\"main.journal\": `2026-01-04 Exchange\n  assets:cash      10.00 EUR\n  assets:checking -11.00 USD\n`}, \"main.journal\")\n\n\tout, _, code := runCLI(t, \"validate\", path)\n\n\tif code != 1 {\n\t\tt.Fatalf(\"exit code = %d, want 1\", code)\n\t}\n\tif !strings.Contains(out, \"10.00 EUR\") || !strings.Contains(out, \"-11.00 USD\") {\n\t\tt.Errorf(\"report does not name both residuals:\\n%s\", out)\n\t}\n}\nEOF\ngo test ./... 2>&1 | tail -8",
+      "seconds": 0.55,
+      "failed": true,
+      "at": "2026-09-13T12:55:35.138Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/ledger/go/tdd\" && python3 - <<'PY'\np='cli_test.go'\ns=open(p).read()\ns=s.replace('''  assets:cash      10.00 EUR\n  assets:checking -11.00 USD''','''  assets:cash       10.00 EUR\n  assets:checking  -11.00 USD''')\nopen(p,'w').write(s)\nPY\ngo test ./... 2>&1 | tail -6",
+      "seconds": 0.38,
+      "failed": true,
+      "at": "2026-09-13T12:55:45.714Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/ledger/go/tdd\" && go test ./... 2>&1 | head -20",
+      "seconds": 0.4,
+      "failed": true,
+      "at": "2026-09-13T12:55:48.275Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/ledger/go/tdd\" && python3 - <<'PY'\np='cli_test.go'\ns=open(p).read()\ns=s.replace('\"expenses                       10.00 EUR, 42.50 USD\"','\"expenses                      10.00 EUR, 42.50 USD\"')\nopen(p,'w').write(s)\nPY\ngo test ./... 2>&1 | tail -6",
+      "seconds": 0.39,
+      "failed": false,
+      "at": "2026-09-13T12:55:55.288Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/ledger/go/tdd\" && cat >> cli_test.go <<'EOF'\n\nfunc TestCommentsAreIgnoredEverywhere(t *testing.T) {\n\tpath := writeJournal(t, map[string]string{\"main.journal\": `; monthly journal\n2026-01-04 Grocery store  ; weekly shop\n  ; this posting pays for it\n  expenses:food      42.50 USD   ; includes tax\n  assets:checking   -42.50 USD\n`}, \"main.journal\")\n\n\tout, errOut, code := runCLI(t, \"register\", path)\n\n\tif code != 0 {\n\t\tt.Fatalf(\"exit code = %d, want 0 (stderr: %q)\", code, errOut)\n\t}\n\tif strings.Contains(out, \";\") || strings.Contains(out, \"weekly shop\") {\n\t\tt.Errorf(\"comment text leaked into output:\\n%s\", out)\n\t}\n\twant := \"2026-01-04 Grocery store         expenses:food                  42.50 USD\\n\" +\n\t\t\"                                 assets:checking               -42.50 USD\\n\"\n\tif out != want {\n\t\tt.Errorf(\"got:\\n%s\\nwant:\\n%s\", out, want)\n\t}\n}\nEOF\ngo test ./... 2>&1 | head -12",
+      "seconds": 0.46,
+      "failed": true,
+      "at": "2026-09-13T12:56:05.083Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/ledger/go/tdd\" && python3 - <<'PY'\np='journal.go'\ns=open(p).read()\ns=s.replace('''\t\traw := sc.Text()\n\t\tline := strings.TrimRight(stripComment(raw), \" \\\\t\")\n\t\tif strings.TrimSpace(line) == \"\" {\n\t\t\tcur = nil\n\t\t\tcontinue\n\t\t}''','''\t\traw := sc.Text()\n\t\tif strings.TrimSpace(raw) == \"\" {\n\t\t\tcur = nil // a blank line ends a transaction; a comment line does not\n\t\t\tcontinue\n\t\t}\n\t\tline := strings.TrimRight(stripComment(raw), \" \\\\t\")\n\t\tif strings.TrimSpace(line) == \"\" {\n\t\t\tcontinue\n\t\t}''')\nopen(p,'w').write(s)\nPY\ngofmt -w . && go test ./... 2>&1 | head -12",
+      "seconds": 0.37,
+      "failed": false,
+      "at": "2026-09-13T12:56:09.912Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/ledger/go/tdd\" && cat >> cli_test.go <<'EOF'\n\nfunc TestIncludePullsInAnotherJournalRelativeToTheIncludingFile(t *testing.T) {\n\tpath := writeJournal(t, map[string]string{\n\t\t\"main.journal\": `include groceries.journal\n\n2026-01-05 Bus\n  expenses:transit    2.00 USD\n  assets:checking    -2.00 USD\n`,\n\t\t\"groceries.journal\": `2026-01-04 Grocery store\n  expenses:food      42.50 USD\n  assets:checking   -42.50 USD\n`,\n\t}, \"main.journal\")\n\n\tout, errOut, code := runCLI(t, \"balance\", path, \"--depth\", \"1\")\n\n\tif code != 0 {\n\t\tt.Fatalf(\"exit code = %d, want 0 (stderr: %q)\", code, errOut)\n\t}\n\twant := \"assets                        -44.50 USD\\n\" +\n\t\t\"expenses                       44.50 USD\\n\"\n\tif out != want {\n\t\tt.Errorf(\"got:\\n%s\\nwant:\\n%s\", out, want)\n\t}\n}\nEOF\ngo test ./... 2>&1 | head -12",
+      "seconds": 0.43,
+      "failed": true,
+      "at": "2026-09-13T12:56:17.193Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/ledger/go/tdd\" && python3 - <<'PY'\np='journal.go'\ns=open(p).read()\ns=s.replace('''\t\tif !indented {\n\t\t\tdate, payee, err := parseHeader(line)''','''\t\tif !indented {\n\t\t\tif target, ok := strings.CutPrefix(line, \"include \"); ok {\n\t\t\t\tcur = nil\n\t\t\t\ttarget = strings.TrimSpace(target)\n\t\t\t\tif target == \"\" {\n\t\t\t\t\treturn fmt.Errorf(\"%s:%d: include needs a file name\", path, lineNo)\n\t\t\t\t}\n\t\t\t\tif !filepath.IsAbs(target) {\n\t\t\t\t\ttarget = filepath.Join(filepath.Dir(path), target)\n\t\t\t\t}\n\t\t\t\tif err := parseInto(j, target); err != nil {\n\t\t\t\t\treturn err\n\t\t\t\t}\n\t\t\t\tcontinue\n\t\t\t}\n\t\t\tdate, payee, err := parseHeader(line)''')\ns=s.replace('''\t\"os\"\n\t\"sort\"''','''\t\"os\"\n\t\"path/filepath\"\n\t\"sort\"''')\nopen(p,'w').write(s)\nPY\ngofmt -w . && go test ./... 2>&1 | head -12",
+      "seconds": 0.41,
+      "failed": false,
+      "at": "2026-09-13T12:56:23.101Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/ledger/go/tdd\" && cat >> cli_test.go <<'EOF'\n\nfunc TestIncludeCycleIsAnErrorNotACrash(t *testing.T) {\n\tpath := writeJournal(t, map[string]string{\n\t\t\"a.journal\": \"include b.journal\\n\",\n\t\t\"b.journal\": \"include a.journal\\n\",\n\t}, \"a.journal\")\n\n\t_, errOut, code := runCLI(t, \"validate\", path)\n\n\tif code != 1 {\n\t\tt.Fatalf(\"exit code = %d, want 1\", code)\n\t}\n\tif !strings.Contains(errOut, \"cycle\") {\n\t\tt.Errorf(\"error %q does not mention a cycle\", errOut)\n\t}\n}\nEOF\ngo test -timeout 30s ./... 2>&1 | head -8",
+      "seconds": 6.95,
+      "failed": false,
+      "at": "2026-09-13T12:56:31.073Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/ledger/go/tdd\" && python3 - <<'PY'\np='journal.go'\ns=open(p).read()\ns=s.replace('''type Journal struct {\n\tTransactions []Transaction\n}''','''type Journal struct {\n\tTransactions []Transaction\n\topen         map[string]bool // files currently being parsed, to catch include cycles\n}''')\ns=s.replace('''\tj := &Journal{}\n\tif err := parseInto(j, path); err != nil {''','''\tj := &Journal{open: map[string]bool{}}\n\tif err := parseInto(j, path); err != nil {''')\ns=s.replace('''func parseInto(j *Journal, path string) error {\n\tf, err := os.Open(path)''','''func parseInto(j *Journal, path string) error {\n\tkey, err := filepath.Abs(path)\n\tif err != nil {\n\t\tkey = path\n\t}\n\tif j.open[key] {\n\t\treturn fmt.Errorf(\"%s: include cycle\", path)\n\t}\n\tj.open[key] = true\n\tdefer delete(j.open, key)\n\n\tf, err := os.Open(path)''')\nopen(p,'w').write(s)\nPY\ngofmt -w . && go test -timeout 30s ./... 2>&1 | head -8",
+      "seconds": 0.4,
+      "failed": false,
+      "at": "2026-09-13T12:56:43.342Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/ledger/go/tdd\" && cat >> cli_test.go <<'EOF'\n\nfunc TestMalformedInputGivesAClearErrorNotAStackTrace(t *testing.T) {\n\tcases := []struct {\n\t\tname    string\n\t\tjournal string\n\t\twants   []string\n\t}{\n\t\t{\"bad date\", \"2026-13-XX Grocery\\n  a  1.00 USD\\n  b -1.00 USD\\n\", []string{\":1:\", \"YYYY-MM-DD\"}},\n\t\t{\"bad amount\", \"2026-01-04 Grocery\\n  a  1.0O USD\\n  b\\n\", []string{\":2:\", \"1.0O\"}},\n\t\t{\"posting with no transaction\", \"  a  1.00 USD\\n\", []string{\":1:\", \"transaction\"}},\n\t\t{\"single-spaced amount\", \"2026-01-04 Grocery\\n  assets:cash 1.00 USD\\n  b\\n\", []string{\":2:\", \"two spaces\"}},\n\t}\n\tfor _, c := range cases {\n\t\tt.Run(c.name, func(t *testing.T) {\n\t\t\tpath := writeJournal(t, map[string]string{\"main.journal\": c.journal}, \"main.journal\")\n\n\t\t\tout, errOut, code := runCLI(t, \"validate\", path)\n\n\t\t\tif code == 0 {\n\t\t\t\tt.Fatalf(\"exit code = 0, want non-zero; stdout %q\", out)\n\t\t\t}\n\t\t\tfor _, want := range c.wants {\n\t\t\t\tif !strings.Contains(errOut, want) {\n\t\t\t\t\tt.Errorf(\"error %q does not contain %q\", errOut, want)\n\t\t\t\t}\n\t\t\t}\n\t\t\tif strings.Contains(errOut, \"goroutine\") || strings.Contains(errOut, \"panic:\") {\n\t\t\t\tt.Errorf(\"error looks like a stack trace: %q\", errOut)\n\t\t\t}\n\t\t})\n\t}\n}\n\nfunc TestMissingFileIsReportedPlainly(t *testing.T) {\n\t_, errOut, code := runCLI(t, \"validate\", filepath.Join(t.TempDir(), \"nope.journal\"))\n\n\tif code != 1 {\n\t\tt.Fatalf(\"exit code = %d, want 1\", code)\n\t}\n\tif !strings.Contains(errOut, \"nope.journal\") || strings.Contains(errOut, \"panic:\") {\n\t\tt.Errorf(\"unhelpful error: %q\", errOut)\n\t}\n}\nEOF\ngo test -timeout 30s ./... 2>&1 | head -20",
+      "seconds": 0.36,
+      "failed": true,
+      "at": "2026-09-13T12:56:56.606Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/ledger/go/tdd\" && python3 - <<'PY'\np='journal.go'\ns=open(p).read()\ns=s.replace('''\tp := Posting{Account: account}\n\tif amountText == \"\" {\n\t\treturn p, nil\n\t}''','''\tp := Posting{Account: account}\n\tif amountText == \"\" {\n\t\tif looksLikeAmount(account) {\n\t\t\treturn Posting{}, fmt.Errorf(\"an amount must be separated from the account name by two spaces or a tab\")\n\t\t}\n\t\treturn p, nil\n\t}''')\ns=s.replace('''func splitPosting(''','''// looksLikeAmount reports whether an account name ends in something that was\n// probably meant to be an amount, e.g. \"assets:cash 1.00 USD\".\nfunc looksLikeAmount(account string) bool {\n\tfields := strings.Fields(account)\n\tif len(fields) < 2 {\n\t\treturn false\n\t}\n\tif _, err := parseDecimal(fields[len(fields)-1]); err == nil {\n\t\treturn true\n\t}\n\t_, err := parseDecimal(fields[len(fields)-2])\n\treturn err == nil\n}\n\nfunc splitPosting(''')\nopen(p,'w').write(s)\nPY\ngofmt -w . && go test -timeout 30s ./... 2>&1 | head -20",
+      "seconds": 0.41,
+      "failed": false,
+      "at": "2026-09-13T12:57:11.646Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/ledger/go/tdd\" && cat >> cli_test.go <<'EOF'\n\nfunc TestUsageErrorsExplainThemselves(t *testing.T) {\n\tfor _, args := range [][]string{{}, {\"validate\"}, {\"frobnicate\", \"x.journal\"}} {\n\t\t_, errOut, code := runCLI(t, args...)\n\t\tif code != 2 {\n\t\t\tt.Errorf(\"args %v: exit code = %d, want 2\", args, code)\n\t\t}\n\t\tif !strings.Contains(errOut, \"ledger\") {\n\t\t\tt.Errorf(\"args %v: unhelpful error %q\", args, errOut)\n\t\t}\n\t}\n}\nEOF\ngo test -timeout 30s ./... 2>&1 | head -20",
+      "seconds": 0.41,
+      "failed": false,
+      "at": "2026-09-13T12:57:20.188Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/ledger/go/tdd\" && cat >> cli_test.go <<'EOF'\n\nfunc TestAmountsKeepTheirPrecisionAndDoNotDriftLikeFloats(t *testing.T) {\n\tpath := writeJournal(t, map[string]string{\"main.journal\": `2026-01-04 Buy coin\n  assets:crypto     0.12345678 BTC\n  assets:broker    -0.12345678 BTC\n\n2026-01-05 Tenths\n  expenses:a         0.10 USD\n  expenses:b         0.20 USD\n  assets:checking\n`}, \"main.journal\")\n\n\tout, _, code := runCLI(t, \"balance\", path, \"--depth\", \"1\")\n\n\tif code != 0 {\n\t\tt.Fatalf(\"exit code = %d, want 0\", code)\n\t}\n\tif !strings.Contains(out, \"0.30 USD\") {\n\t\tt.Errorf(\"tenths did not add up to 0.30:\\n%s\", out)\n\t}\n\tif !strings.Contains(out, \"0.12345678 BTC\") {\n\t\tt.Errorf(\"eight-decimal amount lost precision:\\n%s\", out)\n\t}\n}\nEOF\ngo test -timeout 30s ./... 2>&1 | head -20",
+      "seconds": 0.52,
+      "failed": true,
+      "at": "2026-09-13T12:57:31.272Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/ledger/go/tdd\" && python3 - <<'PY'\np='cli_test.go'\ns=open(p).read()\ns=s.replace('''  assets:broker    -0.12345678 BTC''','''  equity:opening   -0.12345678 BTC''')\nopen(p,'w').write(s)\nPY\ngo test -timeout 30s ./... 2>&1 | head -20",
+      "seconds": 0.4,
+      "failed": false,
+      "at": "2026-09-13T12:57:36.534Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/ledger/go/tdd\" && python3 - <<'PY'\np='cli_test.go'\ns=open(p).read()\ns=s.replace('''func TestMissingFileIsReportedPlainly(t *testing.T) {\n\t_, errOut, code := runCLI(t, \"validate\", filepath.Join(t.TempDir(), \"nope.journal\"))\n\n\tif code != 1 {\n\t\tt.Fatalf(\"exit code = %d, want 1\", code)\n\t}\n\tif !strings.Contains(errOut, \"nope.journal\") || strings.Contains(errOut, \"panic:\") {\n\t\tt.Errorf(\"unhelpful error: %q\", errOut)\n\t}\n}''','''func TestMissingFileIsReportedPlainly(t *testing.T) {\n\tmissing := filepath.Join(t.TempDir(), \"nope.journal\")\n\n\t_, errOut, code := runCLI(t, \"validate\", missing)\n\n\tif code != 1 {\n\t\tt.Fatalf(\"exit code = %d, want 1\", code)\n\t}\n\tif strings.Count(errOut, missing) != 1 {\n\t\tt.Errorf(\"error should name the file exactly once: %q\", errOut)\n\t}\n\tif !strings.Contains(errOut, \"no such file\") || strings.Contains(errOut, \"panic:\") {\n\t\tt.Errorf(\"unhelpful error: %q\", errOut)\n\t}\n}''')\nopen(p,'w').write(s)\nPY\ngo test -timeout 30s ./... 2>&1 | head -8",
+      "seconds": 0.42,
+      "failed": true,
+      "at": "2026-09-13T12:57:59.046Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/ledger/go/tdd\" && python3 - <<'PY'\np='journal.go'\ns=open(p).read()\ns=s.replace('''\tf, err := os.Open(path)\n\tif err != nil {\n\t\treturn fmt.Errorf(\"%s: %v\", path, err)\n\t}''','''\tf, err := os.Open(path)\n\tif err != nil {\n\t\treturn err // os already names the file\n\t}''')\nopen(p,'w').write(s)\nPY\ngofmt -w . && go test -timeout 30s ./... 2>&1 | head -8",
+      "seconds": 0.41,
+      "failed": false,
+      "at": "2026-09-13T12:58:03.121Z"
+    },
+    {
+      "command": "cd \"/media/nathanielsong/Sata Programming/VSCode/rtdd-bench/examples/ledger/go/tdd\" && gofmt -l . && go vet ./... && go test -timeout 60s -v ./... 2>&1 | grep -E '^(=== RUN|--- |ok|FAIL)' | grep -v '=== RUN' | head -30 && wc -l *.go",
+      "seconds": 0.41,
+      "failed": false,
+      "at": "2026-09-13T12:58:07.912Z"
+    }
+  ]
+}

@@ -14,12 +14,40 @@ from collections import Counter
 IDLE_CAP_S = 120.0
 
 # Commands that actually execute tests.
+# A runner counts only at command position, so a heredoc that merely writes
+# "import pytest" or a Go test body is not a test run. Bodies are stripped first
+# (strip_heredocs), then a runner is matched at the start of any remaining line
+# or after a shell separator.
+AT_CMD = r"(?:^|[;&|]\s*)(?:[\w./~-]+=\S+\s+)*[\w./~-]*"
 TEST_EXEC = re.compile(
-    # the runner may be invoked by path -- ./mvnw, ~/.local/bin/mvn, /usr/bin/gradle
-    r"(?:^|[;&|]\s*|\s)[\w./~-]*(?:mvnw?|gradlew?)\b[^;&|]*\b(?:test|verify|check)\b"
-    r"|(?:^|[;&|]\s*|\s)rtdd\s+(?:run|verify|seed)\b",
-    re.I,
+    # the runner may be invoked by path -- ./mvnw, ~/.local/bin/mvn, .venv/bin/pytest
+    AT_CMD + r"(?:mvnw?|gradlew?)\b[^;&|]*\b(?:test|verify|check)\b"
+    + "|" + AT_CMD + r"rtdd\s+(?:run|verify|seed)\b"
+    # --version / --collect-only run no tests
+    + "|" + AT_CMD + r"pytest\b(?![^;&|\n]*(?:--version|--collect-only|--co\b))"
+    + "|" + AT_CMD + r"python[\d.]*\s+-m\s+pytest\b(?![^;&|\n]*--version)"
+    + "|" + AT_CMD + r"(?:go|gotestsum)\s+test\b",
+    re.I | re.M,
 )
+HEREDOC = re.compile(r"<<-?\s*(['\"]?)([A-Za-z_][\w]*)\1")
+
+
+def strip_heredocs(cmd):
+    """The command without the bodies it writes to disk.
+
+    An agent bundles a whole test file into one Bash call, so the body would
+    otherwise look like a test invocation to any line-anchored pattern."""
+    out, lines, i = [], cmd.splitlines(), 0
+    while i < len(lines):
+        line = lines[i]
+        out.append(line)
+        tags = [m.group(2) for m in HEREDOC.finditer(line)]
+        i += 1
+        for tag in tags:
+            while i < len(lines) and lines[i].strip() != tag:
+                i += 1
+            i += 1  # the terminator itself
+    return "\n".join(out)
 # rtdd queries that run no tests -- the selector's own overhead.
 SELECTOR_QUERY = re.compile(r"(?:^|[;&|]\s*|\s)rtdd\s+(?:which|status|explain|doctor|map)\b", re.I)
 
@@ -28,7 +56,9 @@ FAIL_MARKERS = re.compile(
     r"BUILD FAILURE|Tests run:.*?Failures: [1-9]|Tests run:.*?Errors: [1-9]"
     r"|FAILURES!|There are test failures"
     r"|\b[1-9]\d* (?:tests? )?failed\b"
-    r"|(?-i:\bFAILED\b)",
+    r"|(?-i:\bFAILED\b)"
+    # go test: "--- FAIL: TestX" per test, "FAIL\tmodule\t0.2s" per package
+    r"|(?-i:---\s+FAIL:|\bFAIL\b\s+\S+\s+\[?(?:build failed|setup failed|\d))",
     re.I,
 )
 
@@ -157,6 +187,7 @@ def collect(workspace, label, session=None, since=None, until=None,
                     pending[b["id"]] = (d["timestamp"], (b.get("input") or {}).get("command", ""))
             elif b.get("type") == "tool_result" and b.get("tool_use_id") in pending:
                 t0, cmd = pending.pop(b["tool_use_id"])
+                bare = strip_heredocs(cmd)
                 dur = (ts(d["timestamp"]) - ts(t0)).total_seconds()
                 body = text_of(b)
                 rec = {
@@ -165,9 +196,9 @@ def collect(workspace, label, session=None, since=None, until=None,
                     "failed": bool(b.get("is_error")) or bool(FAIL_MARKERS.search(body)),
                     "at": t0,
                 }
-                if TEST_EXEC.search(cmd):
+                if TEST_EXEC.search(bare):
                     runs.append(rec)
-                elif SELECTOR_QUERY.search(cmd):
+                elif SELECTOR_QUERY.search(bare):
                     queries.append(rec)
 
     # Red -> green transitions across consecutive test executions.
@@ -255,9 +286,33 @@ def project_stats(ws):
         except Exception:
             pass
 
-    src = glob.glob(f"{ws}/**/src/main/**/*.java", recursive=True)
-    tst = glob.glob(f"{ws}/**/src/test/**/*.java", recursive=True)
-    loc = lambda fs: sum(sum(1 for _ in open(f, errors="replace")) for f in fs)
+    # Sources on disk, so an artifact the agent never committed still counts.
+    # Dot-directories and dependency trees are skipped, so a .venv or vendor
+    # directory is never mistaken for the artifact.
+    SKIP = {"__pycache__", "vendor", "node_modules", "target", "build", "dist"}
+    tracked = []
+    for root, dirs, files in os.walk(ws):
+        dirs[:] = [d for d in dirs if not d.startswith(".") and d not in SKIP]
+        for f in files:
+            if f.endswith((".py", ".go", ".java")):
+                tracked.append(os.path.relpath(os.path.join(root, f), ws))
+    is_test = lambda f: bool(re.search(
+        r"(?:^|/)tests?/|(?:^|/)test_[^/]+\.py$|_test\.(?:py|go)$|Test\.java$|/src/test/", f))
+    tst = [os.path.join(ws, f) for f in sorted(tracked) if is_test(f)]
+    src = [os.path.join(ws, f) for f in sorted(tracked) if not is_test(f)]
+    loc = lambda fs: sum(sum(1 for _ in open(f, errors="replace")) for f in fs
+                         if os.path.exists(f))
+
+    # No surefire XML in a python or go workspace, so count the test functions the
+    # artifact actually declares.
+    if not tests:
+        for f in tst:
+            if not os.path.exists(f):
+                continue
+            body = open(f, errors="replace").read()
+            tests += len(re.findall(r"^\s*(?:async def test_|def test_|func (?:Test|Fuzz|Example))",
+                                    body, re.M))
+        suites = len(tst)
 
     return {
         "tests_reported": tests,

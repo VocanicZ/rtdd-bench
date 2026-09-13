@@ -57,10 +57,10 @@ def render(root=ROOT):
             "Percentages are rtdd relative to tdd, so negative is less. Each project links "
             "to its full table.\n",
             table(rows)]
-    if any(r[-1] != "execution" for r in rows):
+    if any(not str(r[-1]).startswith("execution") for r in rows):
         body.append(
             "\n> Rows below `execution` fidelity ran rtdd against an adapter that records no "
-            "coverage and builds no map (maven is one), so their tests were chosen from declared "
+            "coverage and builds no map (go is one), so their tests were chosen from declared "
             "correspondence rather than from a recorded run. Read those selection deltas as "
             "static selection.")
     body.append("\n_One trial is an anecdote; these sessions are not deterministic._")
