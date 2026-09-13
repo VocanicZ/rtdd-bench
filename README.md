@@ -72,13 +72,18 @@ git clone https://github.com/VocanicZ/<example>-<stack>-tdd.git work && cd work 
 git clone https://github.com/VocanicZ/<example>-<stack>-rtdd.git work && cd work   # container B
 ```
 
-Each clone already contains its `PROMPT.md`. The first message of the session is two
-lines, and the only difference between the containers is the first one:
+Each clone already contains its `PROMPT.md`. Send two messages, and the only difference
+between the containers is the first one:
 
 ```
-/tdd            (container A)   or   /rtdd   (container B)
-Your task is in PROMPT.md.
+/tdd          (container A)   or   /rtdd   (container B)
+@PROMPT.md
 ```
+
+Two messages, not one line: a slash command takes the rest of the line as its arguments,
+so `/tdd @PROMPT.md` risks the mention being passed as an argument instead of expanded.
+The `@` mention inlines the file rather than making the agent read it, so no tool call
+separates the two variants' opening turns.
 
 Container A needs the `/tdd` skill installed in the image; container B gets the `/rtdd`
 skill from the workspace itself, planted by `rtdd init`, and needs `rtdd` on PATH. Run
