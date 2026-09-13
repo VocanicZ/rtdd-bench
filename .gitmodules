@@ -1,0 +1,24 @@
+[submodule "examples/ledger/python/tdd"]
+	path = examples/ledger/python/tdd
+	url = https://github.com/VocanicZ/ledger-python-tdd.git
+[submodule "examples/ledger/python/rtdd"]
+	path = examples/ledger/python/rtdd
+	url = https://github.com/VocanicZ/ledger-python-rtdd.git
+[submodule "examples/ledger/go/tdd"]
+	path = examples/ledger/go/tdd
+	url = https://github.com/VocanicZ/ledger-go-tdd.git
+[submodule "examples/ledger/go/rtdd"]
+	path = examples/ledger/go/rtdd
+	url = https://github.com/VocanicZ/ledger-go-rtdd.git
+[submodule "examples/cron-parser/python/tdd"]
+	path = examples/cron-parser/python/tdd
+	url = https://github.com/VocanicZ/cron-parser-python-tdd.git
+[submodule "examples/cron-parser/python/rtdd"]
+	path = examples/cron-parser/python/rtdd
+	url = https://github.com/VocanicZ/cron-parser-python-rtdd.git
+[submodule "examples/cron-parser/go/tdd"]
+	path = examples/cron-parser/go/tdd
+	url = https://github.com/VocanicZ/cron-parser-go-tdd.git
+[submodule "examples/cron-parser/go/rtdd"]
+	path = examples/cron-parser/go/rtdd
+	url = https://github.com/VocanicZ/cron-parser-go-rtdd.git

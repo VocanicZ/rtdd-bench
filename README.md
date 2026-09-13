@@ -128,10 +128,13 @@ are plain directories in this repo, so there is one `.gitmodules` and one level 
 - **Active time is the fairer clock.** Wall clock includes however long the terminal sat
   idle between your turns.
 - **Check the fidelity column.** The roll-up states which tier rtdd actually ran at per
-  project. A `static` adapter (maven is one) records no coverage and builds no map, so the
-  selection deltas measure static correspondence, not the coverage-derived selection rtdd
-  is about. The python, go, jest/vitest and cargo-nextest adapters record coverage — those
-  rows are the real thing.
+  project. A `static` adapter records no coverage and builds no map, so its selection deltas
+  measure declared correspondence, not the coverage-derived selection rtdd is about.
+  As of rtdd 0.1.3, **`python` is the only adapter that reaches `execution-derived`**;
+  go, jest, vitest, cargo-nextest, maven, gradle, dotnet, phpunit and rspec all declare
+  `selection: static, coverage: none`. Verify for yourself with `rtdd doctor` in the
+  workspace. A non-python project therefore measures the effect of the skill's prompt on
+  agent behaviour, not test selection — useful as a control, not as the headline.
 - **One trial is an anecdote.** Run a pair several times before believing a delta; these
   sessions are not deterministic.
 - **The two variants must not see each other.** Run them in separate containers, cloning
