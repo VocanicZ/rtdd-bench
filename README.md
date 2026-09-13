@@ -22,11 +22,16 @@ rtdd-bench/
 ```
 
 The task text lives once per example and the stack constraint once per project, so
-every stack of an example is driven by provably identical task wording. Print the
-exact text to paste with:
+every stack of an example is driven by provably identical task wording.
+`bench/prompt.py --write` assembles the two and plants the result as `PROMPT.md` in
+each workspace, printing a digest per file — the pair shares one digest, so the two
+variants are identical by construction rather than by careful pasting. Commit and push
+that file before running a session; the agent reads it from its own clone.
 
 ```
-bench/prompt.py ledger/python
+bench/prompt.py ledger/python            print it
+bench/prompt.py --write ledger/python    plant it in tdd/ and rtdd/
+bench/prompt.py --write                  ... for every checked-out project
 ```
 
 ## How it measures
@@ -60,13 +65,28 @@ repo with `--recurse-submodules`, which would put both in one tree.
 Starting a session one directory up and pointing the skill at the workspace works too: the
 collector picks the session by where its turns actually ran, not by where it was launched.
 
-**Container A** — clone the project's `tdd` submodule URL (see `.gitmodules`), invoke
-`/tdd`, paste the output of `bench/prompt.py <example>/<project>`.
+Clone into a neutrally named directory so the variant is not in the shell prompt:
 
-**Container B** — clone the same project's `rtdd` URL, invoke `/rtdd`, paste the same text.
+```
+git clone https://github.com/VocanicZ/<example>-<stack>-tdd.git work && cd work    # container A
+git clone https://github.com/VocanicZ/<example>-<stack>-rtdd.git work && cd work   # container B
+```
 
-Do not mention the benchmark, the other variant, or any metric to the agent; everything
-is measured afterwards from the transcript.
+Each clone already contains its `PROMPT.md`. The first message of the session is two
+lines, and the only difference between the containers is the first one:
+
+```
+/tdd            (container A)   or   /rtdd   (container B)
+Your task is in PROMPT.md.
+```
+
+Container A needs the `/tdd` skill installed in the image; container B gets the `/rtdd`
+skill from the workspace itself, planted by `rtdd init`, and needs `rtdd` on PATH. Run
+`rtdd doctor` there before starting and confirm it reports `execution-derived`.
+
+Nothing else in the message. Do not mention the benchmark, the other variant, or any
+metric to the agent, and do not steer mid-session; everything is measured afterwards
+from the transcript.
 
 **Collect, in each container, once its session has ended.** `bench/collect.py` is a single
 stdlib-only file. Fetch it (this repo is private, so via the API rather than a raw URL):
@@ -114,9 +134,14 @@ bench/run.sh ledger/java-maven <tdd-session-id> <rtdd-session-id>
 
 1. `mkdir -p examples/<example>/<project>` and write its `STACK.md`. A new example also
    needs a stack-free `PROMPT.md` beside its projects.
-2. Create the two variant repos and add them as submodules at
-   `examples/<example>/<project>/{tdd,rtdd}`.
-3. Run the pair, collect into `results/<example>/<project>/`, then `bench/run.sh`.
+2. Create the two variant repos, each holding only the stack manifest, and add them as
+   submodules at `examples/<example>/<project>/{tdd,rtdd}`.
+3. In the rtdd workspace run `rtdd init`, then `rtdd doctor`. **If it does not report
+   `execution-derived`, stop** — that stack cannot measure selection, and the run would
+   report prompt discipline instead. Commit `.rtdd/` and the skill files it plants.
+4. `bench/prompt.py --write <example>/<project>`, then commit and push `PROMPT.md` in
+   both workspaces.
+5. Run the pair, collect into `results/<example>/<project>/`, then `bench/run.sh`.
 
 Only the leaves are submodules. `examples/` and everything down to the project directory
 are plain directories in this repo, so there is one `.gitmodules` and one level of init.
