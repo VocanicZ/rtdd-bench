@@ -1,5 +1,7 @@
 # rtdd-bench
 
+[RESULTS](RESULTS.md)
+
 An A/B of two agent workflows building the same project from the same prompt: plain
 test-driven development against rtdd-guided test selection. One example is one task;
 each example is built in several stacks, and each stack runs the pair.
