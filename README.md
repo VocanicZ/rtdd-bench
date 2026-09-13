@@ -1,16 +1,32 @@
 # rtdd-bench
 
-An A/B of two agent workflows building the same Java project from the same prompt:
-plain test-driven development against rtdd-guided test selection.
+An A/B of two agent workflows building the same project from the same prompt: plain
+test-driven development against rtdd-guided test selection. One example is one task;
+each example is built in several stacks, and each stack runs the pair.
 
 ```
 rtdd-bench/
-  PROMPT.md        the prompt, identical for both runs
-  ledger-tdd/      submodule — workspace for the /tdd session
-  ledger-rtdd/     submodule — workspace for the /rtdd session
-  bench/           collector and reporter
-  results/         per-variant metrics.json
-  RESULTS.md       rendered comparison
+  examples/
+    ledger/
+      PROMPT.md              the task, identical for every stack under it
+      java-maven/
+        STACK.md             the stack constraint, appended to the task
+        tdd/                 submodule — workspace for the /tdd session
+        rtdd/                submodule — workspace for the /rtdd session
+        RESULTS.md           rendered comparison for this project
+      python/  go/           same shape
+    cron-parser/  ...
+  bench/          collector, reporter, roll-up, prompt assembler
+  results/<example>/<project>/{tdd,rtdd}.json
+  RESULTS.md      roll-up, one row per project
+```
+
+The task text lives once per example and the stack constraint once per project, so
+every stack of an example is driven by provably identical task wording. Print the
+exact text to paste with:
+
+```
+bench/prompt.py ledger/python
 ```
 
 ## How it measures
@@ -35,28 +51,22 @@ transcripts, keeps the entries whose `cwd` is inside a variant's workspace, and 
 A test run counts as failed if the tool result errored or the output matched a build
 failure marker, so the cycle count does not depend on the agent narrating anything.
 
-## Running it
+## Running one project
 
 The two variants run in **separate containers** and never share a filesystem, so neither
-agent can see the harness or the other run. Clone each project repo on its own — not this
+agent can see the harness or the other run. Clone each variant repo on its own — not this
 repo with `--recurse-submodules`, which would put both in one tree.
 
 Starting a session one directory up and pointing the skill at the workspace works too: the
 collector picks the session by where its turns actually ran, not by where it was launched.
 
-**Container A**
+**Container A** — clone the project's `tdd` submodule URL (see `.gitmodules`), invoke
+`/tdd`, paste the output of `bench/prompt.py <example>/<project>`.
 
-```
-git clone https://github.com/VocanicZ/ledger-tdd.git && cd ledger-tdd
-```
-Invoke `/tdd`, paste the prompt from `PROMPT.md`.
+**Container B** — clone the same project's `rtdd` URL, invoke `/rtdd`, paste the same text.
 
-**Container B**
-
-```
-git clone https://github.com/VocanicZ/ledger-rtdd.git && cd ledger-rtdd
-```
-Invoke `/rtdd`, paste the same prompt.
+Do not mention the benchmark, the other variant, or any metric to the agent; everything
+is measured afterwards from the transcript.
 
 **Collect, in each container, once its session has ended.** `bench/collect.py` is a single
 stdlib-only file. Fetch it (this repo is private, so via the API rather than a raw URL):
@@ -74,17 +84,19 @@ python3 collect.py --workspace . --label rtdd > rtdd.json    # container B
 
 It must run *inside* the container: the transcripts live at `~/.claude/projects` there, and
 the test count and LOC are measured from the workspace on disk. Copy both JSON files into
-`results/` on the host and render:
+`results/<example>/<project>/` on the host and render:
 
 ```
-bench/run.sh
+bench/run.sh                      # every project with results, plus the roll-up
+bench/run.sh ledger/java-maven    # just one
 ```
 
 If instead you copy the raw transcripts out of a container, collect on the host with the
 path the session actually used in there:
 
 ```
-python3 bench/collect.py --workspace . --label tdd   --transcripts ./copied-projects --cwd-prefix /workspace/ledger-tdd > results/tdd.json
+python3 bench/collect.py --workspace . --label tdd --transcripts ./copied-projects \
+  --cwd-prefix /workspace/ledger-tdd > results/ledger/java-maven/tdd.json
 ```
 
 Project stats (test count, LOC, commits) are reported as unavailable in that mode, since
@@ -95,8 +107,19 @@ pin the one you meant:
 
 ```
 python3 collect.py --workspace . --label x --list
-python3 collect.py --workspace . --label tdd --session <id> > tdd.json
+bench/run.sh ledger/java-maven <tdd-session-id> <rtdd-session-id>
 ```
+
+## Adding a project
+
+1. `mkdir -p examples/<example>/<project>` and write its `STACK.md`. A new example also
+   needs a stack-free `PROMPT.md` beside its projects.
+2. Create the two variant repos and add them as submodules at
+   `examples/<example>/<project>/{tdd,rtdd}`.
+3. Run the pair, collect into `results/<example>/<project>/`, then `bench/run.sh`.
+
+Only the leaves are submodules. `examples/` and everything down to the project directory
+are plain directories in this repo, so there is one `.gitmodules` and one level of init.
 
 ## Reading the result honestly
 
@@ -104,13 +127,13 @@ python3 collect.py --workspace . --label tdd --session <id> > tdd.json
   compare `billable_tokens` (input + output + cache write) and the cache-read line separately.
 - **Active time is the fairer clock.** Wall clock includes however long the terminal sat
   idle between your turns.
-- **Check the fidelity line.** The report states which tier rtdd actually ran at. A
-  `static` adapter (maven is one) records no coverage and builds no map, so the selection
-  deltas measure static correspondence, not the coverage-derived selection rtdd is about.
-  Use a stack whose adapter records coverage — python, jest, vitest, go, cargo-nextest —
-  to benchmark the real thing.
-- **One trial is an anecdote.** Run the pair several times before believing a delta;
-  these sessions are not deterministic.
+- **Check the fidelity column.** The roll-up states which tier rtdd actually ran at per
+  project. A `static` adapter (maven is one) records no coverage and builds no map, so the
+  selection deltas measure static correspondence, not the coverage-derived selection rtdd
+  is about. The python, go, jest/vitest and cargo-nextest adapters record coverage — those
+  rows are the real thing.
+- **One trial is an anecdote.** Run a pair several times before believing a delta; these
+  sessions are not deterministic.
 - **The two variants must not see each other.** Run them in separate containers, cloning
-  each project repo directly. The submodule wiring here is only so this repo pins which
+  each variant repo directly. The submodule wiring here is only so this repo pins which
   commit of each variant a given result set refers to.
