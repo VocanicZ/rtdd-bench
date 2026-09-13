@@ -3,7 +3,9 @@
 
   python3 bench/report.py results/tdd.json results/rtdd.json > RESULTS.md
 """
-import json, sys
+import json, re, sys
+
+RUNNER = re.compile(r"\b(?:mvnw?|gradlew?|rtdd)\b")
 
 ROWS = [
     ("Wall clock (s)",            lambda d: d["wall_clock_s"], "lower"),
@@ -59,12 +61,29 @@ def main(paths):
         print("| " + name.ljust(w) + " | " + " | ".join(str(v).ljust(14) for v in vals) + f" | {delta} |")
 
     print("\n_Delta is the second variant relative to the first; negative is less._")
+
+    for d in ds:
+        r = d.get("rtdd")
+        if not r:
+            continue
+        adapters = ", ".join(r["adapters"]) or "none"
+        if r["fidelity"] != "execution":
+            print(f"\n> **`{d['label']}` ran rtdd at `{r['fidelity']}` fidelity** ({adapters} adapter, "
+                  f"{r['map_entries']} map entries). A static adapter records no coverage and builds no "
+                  f"map, so tests were chosen from declared correspondence, not from a recorded run — "
+                  f"rtdd's weakest tier. Read the selection deltas as static selection, not as the "
+                  f"coverage-derived selection rtdd is built around.")
+        else:
+            print(f"\n> `{d['label']}` ran rtdd at `execution` fidelity "
+                  f"({adapters} adapter, {r['map_entries']} map entries).")
     print("\n## Test executions\n")
     for d in ds:
         print(f"### {d['label']}\n")
         for r in d["runs"]:
             mark = "FAIL" if r["failed"] else "pass"
-            cmd = " ".join(r["command"].split())[:88]
+            # show the line that ran the tests, not the heredoc it was bundled with
+            lines = [l for l in r["command"].splitlines() if RUNNER.search(l)]
+            cmd = " ".join((lines[-1] if lines else r["command"]).split())[:88]
             print(f"- `{cmd}` — {r['seconds']}s {mark}")
         print()
 

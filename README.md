@@ -41,6 +41,9 @@ The two variants run in **separate containers** and never share a filesystem, so
 agent can see the harness or the other run. Clone each project repo on its own — not this
 repo with `--recurse-submodules`, which would put both in one tree.
 
+Starting a session one directory up and pointing the skill at the workspace works too: the
+collector picks the session by where its turns actually ran, not by where it was launched.
+
 **Container A**
 
 ```
@@ -101,6 +104,11 @@ python3 collect.py --workspace . --label tdd --session <id> > tdd.json
   compare `billable_tokens` (input + output + cache write) and the cache-read line separately.
 - **Active time is the fairer clock.** Wall clock includes however long the terminal sat
   idle between your turns.
+- **Check the fidelity line.** The report states which tier rtdd actually ran at. A
+  `static` adapter (maven is one) records no coverage and builds no map, so the selection
+  deltas measure static correspondence, not the coverage-derived selection rtdd is about.
+  Use a stack whose adapter records coverage — python, jest, vitest, go, cargo-nextest —
+  to benchmark the real thing.
 - **One trial is an anecdote.** Run the pair several times before believing a delta;
   these sessions are not deterministic.
 - **The two variants must not see each other.** Run them in separate containers, cloning

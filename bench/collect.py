@@ -15,16 +15,20 @@ IDLE_CAP_S = 120.0
 
 # Commands that actually execute tests.
 TEST_EXEC = re.compile(
-    r"(?:^|[;&|]\s*|\s)(?:\./)?(?:mvnw?|gradlew?)\b[^;&|]*\b(?:test|verify|check)\b"
+    # the runner may be invoked by path -- ./mvnw, ~/.local/bin/mvn, /usr/bin/gradle
+    r"(?:^|[;&|]\s*|\s)[\w./~-]*(?:mvnw?|gradlew?)\b[^;&|]*\b(?:test|verify|check)\b"
     r"|(?:^|[;&|]\s*|\s)rtdd\s+(?:run|verify|seed)\b",
     re.I,
 )
 # rtdd queries that run no tests -- the selector's own overhead.
 SELECTOR_QUERY = re.compile(r"(?:^|[;&|]\s*|\s)rtdd\s+(?:which|status|explain|doctor|map)\b", re.I)
 
+# A bare "failed" is not a marker: rtdd run reports "5 ran, 0 failed" on success.
 FAIL_MARKERS = re.compile(
     r"BUILD FAILURE|Tests run:.*?Failures: [1-9]|Tests run:.*?Errors: [1-9]"
-    r"|FAILURES!|\bFAILED\b|tests? failed",
+    r"|FAILURES!|There are test failures"
+    r"|\b[1-9]\d* (?:tests? )?failed\b"
+    r"|(?-i:\bFAILED\b)",
     re.I,
 )
 
@@ -42,43 +46,69 @@ def text_of(block):
     return ""
 
 
-def load_entries(workspace, session=None, since=None, until=None,
-                 transcripts=None, cwd_prefix=None):
-    """Transcript entries whose cwd is inside the workspace, in time order.
-
-    A benchmark workspace is normally used by exactly one session, but --session
-    (or --since/--until) pins it when a run was resumed or retried."""
-    ws = cwd_prefix or os.path.realpath(workspace)
-    prefixes = {ws, os.path.abspath(workspace), os.path.realpath(workspace)} if not cwd_prefix else {ws}
-    slug = re.sub(r"[^a-zA-Z0-9]", "-", ws)
+def scan(since=None, until=None, transcripts=None):
+    """Every transcript entry grouped by session, plus each entry's cwd."""
     home = os.path.expanduser(transcripts or "~/.claude/projects")
-    files = glob.glob(f"{home}/{slug}/*.jsonl") or glob.glob(f"{home}/*/*.jsonl")
-    out = []
-    for f in files:
+    by_session = {}
+    for f in glob.glob(f"{home}/*/*.jsonl"):
         with open(f, errors="replace") as fh:
             for line in fh:
                 try:
                     d = json.loads(line)
                 except ValueError:
                     continue
-                if not d.get("timestamp"):
-                    continue
-                cwd = d.get("cwd")
-                if not cwd:
-                    continue
-                cands = {cwd, os.path.realpath(cwd)} if os.path.exists(cwd) else {cwd}
-                if not any(c == pre or c.startswith(pre + os.sep)
-                           for c in cands for pre in prefixes):
-                    continue
-                if session and d.get("sessionId") != session:
+                if not (d.get("timestamp") and d.get("sessionId")):
                     continue
                 if since and d["timestamp"] < since:
                     continue
                 if until and d["timestamp"] > until:
                     continue
-                out.append(d)
-    out.sort(key=lambda d: d["timestamp"])
-    return out
+                by_session.setdefault(d["sessionId"], []).append(d)
+    return by_session
+
+
+def in_workspace(d, ws):
+    cwd = d.get("cwd")
+    if not cwd:
+        return False
+    cands = {cwd, os.path.realpath(cwd)} if os.path.exists(cwd) else {cwd}
+    return any(c == ws or c.startswith(ws + os.sep) for c in cands)
+
+
+def rank_sessions(workspace, since=None, until=None, transcripts=None,
+                  cwd_prefix=None):
+    """Sessions that worked in this workspace, most entries there first.
+
+    A session is filed under the cwd it started in, which is not always the
+    workspace: a session launched at the bench root and then working inside a
+    submodule lands under the root's slug. So every transcript is read and
+    scored by cwd instead of trusting the directory name."""
+    ws = cwd_prefix or os.path.realpath(workspace)
+    by_session = scan(since, until, transcripts)
+    scores = Counter({s: sum(1 for d in ds if in_workspace(d, ws)) for s, ds in by_session.items()})
+    ranked = [(s, n) for s, n in scores.most_common() if n]
+    return ranked, by_session
+
+
+def load_entries(workspace, session=None, since=None, until=None,
+                 transcripts=None, cwd_prefix=None):
+    """The whole of the session that worked in this workspace, in time order.
+
+    Entries of that session whose cwd is the parent directory are kept: the run
+    opens there, and dropping those turns would lose their time and tokens."""
+    ranked, by_session = rank_sessions(workspace, since, until, transcripts, cwd_prefix)
+    if session:
+        chosen = session
+    elif not ranked:
+        return []
+    else:
+        chosen = ranked[0][0]
+        if len(ranked) > 1:
+            others = ", ".join(f"{s} ({n})" for s, n in ranked[1:])
+            print(f"warning: {len(ranked)} sessions worked in {workspace}; using "
+                  f"{chosen} ({ranked[0][1]} entries there). Others: {others}. "
+                  f"Pin one with --session <id>.", file=sys.stderr)
+    return sorted(by_session.get(chosen, []), key=lambda d: d["timestamp"])
 
 
 def collect(workspace, label, session=None, since=None, until=None,
@@ -178,7 +208,27 @@ def collect(workspace, label, session=None, since=None, until=None,
         "billable_tokens": billable,
         "tool_calls": dict(tools.most_common()),
         "project": project_stats(workspace),
+        "rtdd": rtdd_state(workspace),
         "runs": runs,
+    }
+
+
+def rtdd_state(ws):
+    """How rtdd was set up here, so the report can label its own fidelity.
+
+    A static adapter records no coverage and builds no map, so its selection is
+    derived from declared correspondence rather than from a recorded run. That
+    is a weaker claim and the report has to say so."""
+    cfg = os.path.join(ws, ".rtdd", "config.yaml")
+    if not os.path.exists(cfg):
+        return None
+    text = open(cfg, errors="replace").read()
+    fidelity = re.findall(r"^\s*fidelity:\s*(\S+)", text, re.M)
+    mapfile = os.path.join(ws, ".rtdd", "map.jsonl")
+    return {
+        "adapters": re.findall(r"^\s*-?\s*name:\s*(\S+)", text, re.M),
+        "fidelity": fidelity[0] if fidelity else "unknown",
+        "map_entries": sum(1 for _ in open(mapfile, errors="replace")) if os.path.exists(mapfile) else 0,
     }
 
 
@@ -233,15 +283,11 @@ if __name__ == "__main__":
     p.add_argument("--list", action="store_true", help="list sessions and exit")
     a = p.parse_args()
     if a.list:
-        seen = {}
-        for d in load_entries(a.workspace, transcripts=a.transcripts,
-                              cwd_prefix=a.cwd_prefix):
-            sid = d.get("sessionId")
-            if sid:
-                seen.setdefault(sid, [d["timestamp"], 0])
-                seen[sid][1] += 1
-        for sid, (t, n) in sorted(seen.items(), key=lambda kv: kv[1][0]):
-            print(f"{sid}  first={t}  entries={n}")
+        ranked, by_session = rank_sessions(a.workspace, a.since, a.until,
+                                           a.transcripts, a.cwd_prefix)
+        for sid, n in ranked:
+            ds = by_session[sid]
+            print(f"{sid}  first={ds[0]['timestamp']}  entries={len(ds)}  in-workspace={n}")
         sys.exit(0)
     json.dump(collect(a.workspace, a.label, a.session, a.since, a.until,
                       a.transcripts, a.cwd_prefix), sys.stdout, indent=2)
